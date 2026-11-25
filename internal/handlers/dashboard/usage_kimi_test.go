@@ -50,7 +50,7 @@ func TestFetchKimiUsage_MapsAllWindows(t *testing.T) {
 	if weekly["resetAt"] != "2026-11-21T00:00:00Z" {
 		t.Errorf("ratio reset_time must parse: %+v", weekly)
 	}
-	if weekly["name"] != "Code · 7d" || weekly["isPercentageOnly"] != true {
+	if weekly["name"] != "Weekly · 7d" || weekly["isPercentageOnly"] != true {
 		t.Errorf("ratio window must carry a friendly name: %+v", weekly)
 	}
 	limit, _ := res.quotas["code_5h"].(map[string]any)
@@ -60,7 +60,7 @@ func TestFetchKimiUsage_MapsAllWindows(t *testing.T) {
 	if limit["resetAt"] != "2026-11-19T10:00:00Z" {
 		t.Errorf("limits reset_at must parse: %+v", limit)
 	}
-	session, _ := res.quotas["session (5h)"].(map[string]any)
+	session, _ := res.quotas["Rolling · 5h"].(map[string]any)
 	if session["used"] != 75.0 || session["remainingPercentage"] != 25.0 {
 		t.Errorf("utilization is remaining, not used: %+v", session)
 	}

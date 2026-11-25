@@ -25,3 +25,16 @@ build`).
   with a two-second slot wait and answers 429 when the slot is held, replacing
   the queue sidecar's only job. Combo members therefore fail over to the next
   model instead of waiting out a long queue.
+
+- **Custom model names in the combo picker** — the picker no longer hides a
+  custom row whose name differs from its id when the provider also has a static
+  catalogue, and a sync upgrades a hand-added `name == id` row to the catalogue's
+  display name.
+- **Kimi window labels** — `Rolling · 5h` and `Weekly · 7d` instead of the raw
+  `code_5h` / `code_7d` keys.
+- **Configurable JSON body ceiling** — `MAX_JSON_BODY_MB` raises the 10MB JSON
+  cap for clients that send base64 images; values outside 1..256 fall back to
+  10MB.
+- **Kimi OAuth refresh under the canonical id** — the OAuth client is registered
+  for `kimi` as well as the legacy `kimi-coding`, so a migrated connection keeps
+  refreshing instead of answering 401.

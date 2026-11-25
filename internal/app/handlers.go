@@ -74,7 +74,7 @@ func ProvideRouter(repo *db.Repo, ts *handlers.TokenSaverConfig) (*chi.Mux, *cha
 	// one (middleware.MediaBodyLimitRules). One middleware decides the ceiling
 	// per request — stacking a second MaxBody above this one would leave the
 	// smaller limit still cutting first (#125).
-	r.Use(middleware.MaxBodyByPath(middleware.DefaultMaxBodySize, middleware.MediaBodyLimitRules()))
+	r.Use(middleware.MaxBodyByPath(middleware.JSONBodySize(), middleware.MediaBodyLimitRules()))
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(middleware.RequestLogger)
 

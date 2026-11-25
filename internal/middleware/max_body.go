@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"9router/proxy/internal/handlerutil"
@@ -14,6 +16,22 @@ import (
 // dashboard CRUD). Media uploads are far larger than any JSON payload, so they
 // carry their own ceiling instead — see MediaMaxBodySize (#125).
 const DefaultMaxBodySize = 10 * 1024 * 1024 // 10MB
+
+// JSONBodySize returns the ceiling for JSON APIs. The default stays 10MB so a
+// container with a small memory limit does not buffer more than it can afford;
+// an operator whose clients send base64 images can raise it with
+// MAX_JSON_BODY_MB. Values outside 1..256 are ignored rather than accepted.
+func JSONBodySize() int64 {
+	raw := strings.TrimSpace(os.Getenv("MAX_JSON_BODY_MB"))
+	if raw == "" {
+		return DefaultMaxBodySize
+	}
+	mb, err := strconv.Atoi(raw)
+	if err != nil || mb < 1 || mb > 256 {
+		return DefaultMaxBodySize
+	}
+	return int64(mb) * 1024 * 1024
+}
 
 // MediaMaxBodySize caps multipart uploads. Video generation accepts clips of
 // 15-50MB and /audio/transcriptions accepts 30-60 minute recordings that can

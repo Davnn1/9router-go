@@ -91,9 +91,10 @@ export function resolveModelPickerGroups(
       if (!m.type || m.type === 'llm') return true
       return !MEDIA_KINDS[m.type]
     })
-    const visibleCustoms = hasHardcoded
-      ? validCustoms.filter((m) => (m.name || m.id) === m.id)
-      : validCustoms
+    // Show every custom row. The old filter kept only rows whose name matched
+    // the id when the provider also had a static catalogue, which hid exactly
+    // the rows `/api/models/sync` now creates with a real display name.
+    const visibleCustoms = validCustoms
 
     // Upstream parity: aliases stored as {aliasName: "alias/modelId"}.
     const aliasEntries = Object.entries(extras.modelAliases || {}).filter(

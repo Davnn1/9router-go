@@ -68,6 +68,14 @@ var KnownOAuthConfigs = map[string]OAuthClientConfig{
 		ClientSecret: envOr("GEMINI_CLI_OAUTH_CLIENT_SECRET", "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"),
 		TokenURL:     "https://oauth2.googleapis.com/token",
 	},
+	// The catalog's canonical id. kimi-coding is the legacy alias; both must
+	// refresh through the same Kimi device-flow client, or a connection
+	// migrated to `kimi` stops refreshing and starts answering 401.
+	"kimi": {
+		ClientID:     envOr("KIMI_CODING_OAUTH_CLIENT_ID", ""),
+		ClientSecret: envOr("KIMI_CODING_OAUTH_CLIENT_SECRET", ""),
+		TokenURL:     "https://auth.kimi.com/api/oauth/token",
+	},
 	"kimi-coding": {
 		ClientID:     envOr("KIMI_CODING_OAUTH_CLIENT_ID", ""),
 		ClientSecret: envOr("KIMI_CODING_OAUTH_CLIENT_SECRET", ""),

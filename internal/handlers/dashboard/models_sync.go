@@ -187,7 +187,20 @@ func (h *DashboardHandler) addDiscoveredModels(providerID string, entries []cust
 			continue
 		}
 		key := customModelKey(providerID, entry.ID, "llm")
-		if _, exists := existing[key]; exists {
+		if raw, exists := existing[key]; exists {
+			// A hand-added row often carries the id as its name. The catalogue
+			// knows the display name, so upgrade that row instead of leaving the
+			// picker on a raw id forever.
+			var current db.CustomModel
+			if err := json.Unmarshal([]byte(raw), &current); err == nil &&
+				(current.Name == "" || current.Name == current.ID) &&
+				entry.Name != "" && entry.Name != entry.ID {
+				value, err := json.Marshal(customModelValue(providerID, entry.ID, "llm", entry))
+				if err != nil {
+					return len(writes), fmt.Errorf("encode discovered model %q: %w", entry.ID, err)
+				}
+				writes = append(writes, db.KVEntry{Key: key, Value: string(value)})
+			}
 			continue
 		}
 		value, err := json.Marshal(customModelValue(providerID, entry.ID, "llm", entry))

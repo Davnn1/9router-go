@@ -60,17 +60,17 @@ func fetchKimiUsage(ctx context.Context, accessToken, apiKey string, psd map[str
 
 	quotas := map[string]any{}
 	if q := kimiCountQuota(data["usage"]); q != nil {
-		q["displayName"] = "Code · 7d"
-		q["name"] = "Code · 7d"
+		q["displayName"] = "Weekly · 7d"
+		q["name"] = "Weekly · 7d"
 		quotas["code_7d"] = q
 	}
 	kimiLimitWindows(quotas, data["limits"])
 	kimiRatioWindows(quotas, data["usages"])
-	kimiUtilizationWindow(quotas, data["five_hour"], "session (5h)")
-	kimiUtilizationWindow(quotas, data["seven_day"], "weekly (7d)")
+	kimiUtilizationWindow(quotas, data["five_hour"], "Rolling · 5h")
+	kimiUtilizationWindow(quotas, data["seven_day"], "Weekly · 7d")
 	for key, value := range data {
 		if strings.HasPrefix(key, "seven_day_") && key != "seven_day" {
-			kimiUtilizationWindow(quotas, value, "weekly "+strings.TrimPrefix(key, "seven_day_")+" (7d)")
+			kimiUtilizationWindow(quotas, value, "Weekly · 7d "+strings.TrimPrefix(key, "seven_day_"))
 		}
 	}
 
@@ -242,6 +242,26 @@ func kimiLimitWindows(quotas map[string]any, value any) {
 	}
 }
 
+// kimiDurationLabel names a window by the side of the clock it measures. A
+// five-hour window is rolling, not daily: Kimi starts a new one the moment the
+// old one drains.
+func kimiDurationLabel(value int64, unit string) string {
+	switch {
+	case unit == "h" && value == 5:
+		return "Rolling · 5h"
+	case (unit == "d" && value == 7) || (unit == "w" && value == 1):
+		return "Weekly · 7d"
+	case unit == "d":
+		return fmt.Sprintf("Rolling · %dd", value)
+	case unit == "w":
+		return fmt.Sprintf("Weekly · %dw", value)
+	case unit == "m":
+		return fmt.Sprintf("Rolling · %dm", value)
+	default:
+		return fmt.Sprintf("Rolling · %d%s", value, unit)
+	}
+}
+
 func kimiWindowLabel(value any, index int) (string, string) {
 	window, _ := value.(map[string]any)
 	duration, ok := usageFiniteNum(window["duration"])
@@ -253,13 +273,13 @@ func kimiWindowLabel(value any, index int) (string, string) {
 		if int64(duration)%60 == 0 {
 			return fmt.Sprintf("%dh", int64(duration)/60), fmt.Sprintf("Code · %dh", int64(duration)/60)
 		}
-		return fmt.Sprintf("%dm", int64(duration)), fmt.Sprintf("Code · %dm", int64(duration))
+		return fmt.Sprintf("%dm", int64(duration)), kimiDurationLabel(int64(duration), "m")
 	case "TIME_UNIT_HOUR":
-		return fmt.Sprintf("%dh", int64(duration)), fmt.Sprintf("Code · %dh", int64(duration))
+		return fmt.Sprintf("%dh", int64(duration)), kimiDurationLabel(int64(duration), "h")
 	case "TIME_UNIT_DAY":
-		return fmt.Sprintf("%dd", int64(duration)), fmt.Sprintf("Code · %dd", int64(duration))
+		return fmt.Sprintf("%dd", int64(duration)), kimiDurationLabel(int64(duration), "d")
 	case "TIME_UNIT_WEEK":
-		return fmt.Sprintf("%dw", int64(duration)), fmt.Sprintf("Code · %dw", int64(duration))
+		return fmt.Sprintf("%dw", int64(duration)), kimiDurationLabel(int64(duration), "w")
 	}
 	return fmt.Sprintf("limit_%d", index), fmt.Sprintf("Code · Limit %d", index)
 }
@@ -270,8 +290,8 @@ func kimiRatioWindows(quotas map[string]any, value any) {
 		return
 	}
 	windows := []struct{ source, key, display string }{
-		{"limit_7d", "code_7d", "Code · 7d"},
-		{"limit_5h", "code_5h", "Code · 5h"},
+		{"limit_7d", "code_7d", "Weekly · 7d"},
+		{"limit_5h", "code_5h", "Rolling · 5h"},
 		{"limit_month_total", "monthly", "Monthly"},
 	}
 	for _, window := range windows {

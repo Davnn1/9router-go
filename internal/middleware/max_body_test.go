@@ -178,3 +178,18 @@ func TestHumanBytes(t *testing.T) {
 		})
 	}
 }
+
+func TestJSONBodySizeEnvOverride(t *testing.T) {
+	t.Setenv("MAX_JSON_BODY_MB", "32")
+	if got := JSONBodySize(); got != 32*1024*1024 {
+		t.Errorf("JSONBodySize() = %d, want 32MB", got)
+	}
+	t.Setenv("MAX_JSON_BODY_MB", "0")
+	if got := JSONBodySize(); got != DefaultMaxBodySize {
+		t.Errorf("out-of-range override must fall back to default, got %d", got)
+	}
+	t.Setenv("MAX_JSON_BODY_MB", "512")
+	if got := JSONBodySize(); got != DefaultMaxBodySize {
+		t.Errorf("over-256 override must fall back to default, got %d", got)
+	}
+}
