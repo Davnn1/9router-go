@@ -4,6 +4,7 @@ import (
 	"9router/proxy/internal/changelogfrag"
 	json "9router/proxy/internal/fastjson"
 	"9router/proxy/internal/handlerutil"
+	"9router/proxy/internal/imagehistory"
 	"9router/proxy/internal/jsonfence"
 	"9router/proxy/internal/log"
 	"9router/proxy/internal/middleware"
@@ -55,6 +56,7 @@ func (h *ChatHandler) HandleChatCompletions(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	defer r.Body.Close()
+	body = imagehistory.StripOldImages(body, imagehistory.KeepTurnsFromEnv())
 
 	var reqBody struct {
 		Model  string `json:"model"`
@@ -345,6 +347,7 @@ func (h *ChatHandler) HandleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
+	body = imagehistory.StripOldImages(body, imagehistory.KeepTurnsFromEnv())
 
 	var reqBody struct {
 		Model  string `json:"model"`

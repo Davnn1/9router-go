@@ -43,3 +43,8 @@ build`).
   address to a NoAuth provider's proxy rotation, so a provider can rotate over
   direct + every active pool instead of using direct only after all pools
   refused.
+
+- **Trim images from older turns** — `IMAGE_HISTORY_TURNS=N` keeps images in the
+  last N user turns and replaces older image blocks with a short marker before
+  forwarding, so a long chat stops carrying every screenshot's base64 and
+  vision tokens. The OpenAI, Claude Messages and Responses shapes are handled.

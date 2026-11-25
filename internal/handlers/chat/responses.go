@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"9router/proxy/internal/handlerutil"
+	"9router/proxy/internal/imagehistory"
 	"9router/proxy/internal/jsonfence"
 	"9router/proxy/internal/log"
 	"9router/proxy/internal/middleware"
@@ -79,6 +80,7 @@ func (h *ChatHandler) HandleResponses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
+	body = imagehistory.StripOldImages(body, imagehistory.KeepTurnsFromEnv())
 
 	var reqBody struct {
 		Model  string `json:"model"`
