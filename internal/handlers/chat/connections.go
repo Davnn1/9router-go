@@ -50,6 +50,12 @@ func excludedFrom(excludePools []map[string]bool) map[string]bool {
 // ResolveProviderProxyPoolID returns the provider-level pool one attempt should
 // use. excludePools carries the pools already refused during this turn, so a
 // rotated attempt never lands back on an egress that just failed.
+// ProxyPoolDirectID is the rotation slot that means "use this machine's own
+// egress". It is a sentinel rather than an empty string because an empty
+// ProxyPoolID is indistinguishable from "no rotation picked anything"; the
+// proxy builder must know a slot was chosen on purpose.
+const ProxyPoolDirectID = "__direct__"
+
 func (h *ChatHandler) ResolveProviderProxyPoolID(provider string, excludePools ...map[string]bool) string {
 	id, _ := h.resolveProviderProxyPoolID(provider, excludedFrom(excludePools))
 	return id
@@ -67,6 +73,7 @@ func (h *ChatHandler) resolveProviderProxyPoolID(provider string, excluded map[s
 		return "", nil
 	}
 	var singleID, rotate string
+	includeDirect := false
 	for _, p := range providerStrategyKeys(provider) {
 		if strat, ok := settings.ProviderStrategies[p]; ok {
 			if singleID == "" && strat.ProxyPoolID != "" && strat.ProxyPoolID != "__none__" {
@@ -74,6 +81,9 @@ func (h *ChatHandler) resolveProviderProxyPoolID(provider string, excluded map[s
 			}
 			if rotate == "" && db.IsProxyPoolRotation(strat.ProxyRotateStrategy) {
 				rotate = strat.ProxyRotateStrategy
+			}
+			if strat.IncludeDirect {
+				includeDirect = true
 			}
 		}
 	}
@@ -85,7 +95,7 @@ func (h *ChatHandler) resolveProviderProxyPoolID(provider string, excluded map[s
 	// loop only fills it after an OpenCode free-tier refusal, and rotating to
 	// the next egress is exactly the fix for that refusal.
 	if rotate != "" && (providers.IsNoAuthProvider(provider) || len(excluded) > 0) {
-		id, rotErr := h.rotatedActiveProxyPoolWithin(provider, rotate, excluded)
+		id, rotErr := h.rotatedActiveProxyPoolWithin(provider, rotate, excluded, includeDirect)
 		if rotErr != nil {
 			return "", rotErr
 		}
@@ -112,18 +122,21 @@ var poolRotationCursors sync.Map // map[string]*atomic.Uint64
 // selecting it would hand a share of the traffic to a pool the resolver then
 // refuses.
 func (h *ChatHandler) rotatedActiveProxyPool(provider, strategy string, excludePools ...map[string]bool) string {
-	id, _ := h.rotatedActiveProxyPoolWithin(provider, strategy, excludedFrom(excludePools))
+	id, _ := h.rotatedActiveProxyPoolWithin(provider, strategy, excludedFrom(excludePools), false)
 	return id
 }
 
 // rotatedActiveProxyPoolWithin is rotatedActiveProxyPool with the exclusion set
 // applied before the cursor moves: an excluded pool is never a candidate, so
 // the rotation walks only egresses this turn has not tried yet.
-func (h *ChatHandler) rotatedActiveProxyPoolWithin(provider, strategy string, excluded map[string]bool) (string, error) {
+func (h *ChatHandler) rotatedActiveProxyPoolWithin(provider, strategy string, excluded map[string]bool, includeDirect bool) (string, error) {
 	if h.Repo == nil {
 		return "", nil
 	}
 	ids := h.Repo.ActivePoolIDs()
+	if includeDirect {
+		ids = append(append([]string{}, ids...), ProxyPoolDirectID)
+	}
 	if len(ids) == 0 {
 		return "", nil
 	}

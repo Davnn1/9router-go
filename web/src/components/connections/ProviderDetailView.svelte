@@ -235,6 +235,7 @@
   // Free provider proxy & rotation state
   let freeProxyPoolId = $state('none')
   let freeRotateStrategy = $state<'none' | 'round-robin' | 'random'>('none')
+  let freeIncludeDirect = $state(false)
   let isSavingFreeProxy = $state(false)
   let savedFreeProxy = $state(false)
   // Quota & Cooldown tracking state
@@ -1019,6 +1020,7 @@
       if (strategy && !isSavingFreeProxy) {
         freeProxyPoolId = strategy.proxyPoolId || 'none'
         freeRotateStrategy = (strategy.rotateStrategy as 'none' | 'round-robin' | 'random') || 'none'
+        freeIncludeDirect = strategy.includeDirect === true
       }
       // Fetch quota info for each connection
       for (const c of providerConnections) {
@@ -1036,9 +1038,14 @@
     }
   }
 
-  async function handleFreeProxyChange(newPool: string, newRotate: 'none' | 'round-robin' | 'random') {
+  async function handleFreeProxyChange(
+    newPool: string,
+    newRotate: 'none' | 'round-robin' | 'random',
+    includeDirect = freeIncludeDirect,
+  ) {
     freeProxyPoolId = newPool
     freeRotateStrategy = newRotate
+    freeIncludeDirect = includeDirect
     isSavingFreeProxy = true
     try {
       const currentStrategies = { ...(settings?.providerStrategies || {}) }
@@ -1053,6 +1060,8 @@
       } else {
         currentStrat.rotateStrategy = newRotate
       }
+      if (includeDirect) currentStrat.includeDirect = true
+      else delete currentStrat.includeDirect
       if (Object.keys(currentStrat).length === 0) {
         delete currentStrategies[providerId]
       } else {
@@ -3631,7 +3640,7 @@
           <button
             type="button"
             onclick={() => handleFreeProxyChange(freeProxyPoolId, 'round-robin')}
-            disabled={activeProxyPools.length < 2}
+            disabled={activeProxyPools.length + (freeIncludeDirect ? 1 : 0) < 2}
             class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed {freeRotateStrategy === 'round-robin'
               ? 'bg-primary text-white border-primary'
               : 'bg-surface-2 text-text-main border-border hover:bg-surface-3'}"
@@ -3641,7 +3650,7 @@
           <button
             type="button"
             onclick={() => handleFreeProxyChange(freeProxyPoolId, 'random')}
-            disabled={activeProxyPools.length < 2}
+            disabled={activeProxyPools.length + (freeIncludeDirect ? 1 : 0) < 2}
             class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed {freeRotateStrategy === 'random'
               ? 'bg-primary text-white border-primary'
               : 'bg-surface-2 text-text-main border-border hover:bg-surface-3'}"
@@ -3649,9 +3658,17 @@
             Random
           </button>
         </div>
-        {#if activeProxyPools.length < 2}
+        <label class="flex items-center gap-2 text-xs text-text-main">
+          <input
+            type="checkbox"
+            checked={freeIncludeDirect}
+            onchange={(e) => handleFreeProxyChange(freeProxyPoolId, freeRotateStrategy, e.currentTarget.checked)}
+          />
+          Include direct connection as a rotation slot
+        </label>
+        {#if activeProxyPools.length + (freeIncludeDirect ? 1 : 0) < 2}
           <p class="text-xs text-text-muted">
-            Need at least 2 active proxy pools for rotation.
+            Need at least 2 egress slots (pools or direct) for rotation.
           </p>
         {/if}
       </div>

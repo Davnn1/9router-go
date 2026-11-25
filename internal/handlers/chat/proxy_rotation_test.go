@@ -292,3 +292,24 @@ func TestComboLockRetryable_OpencodeFreeUsageLimitDoesNotLock(t *testing.T) {
 		t.Errorf("expected conn-open to be excluded after a genuine 429, got %v", excludeIDs2)
 	}
 }
+
+// A rotation can include the machine's own egress as one slot. Without this
+// the direct address is reachable only after every pool refused, so four
+// configured egresses would still serve from three.
+func TestResolveProviderProxyPoolID_IncludeDirectSlot(t *testing.T) {
+	repo := poolRotationDB(t, `{"providerStrategies":{"opencode":{"rotateStrategy":"round-robin","includeDirect":true}}}`)
+	ids := insertPools(t, repo, 1)
+	h := NewChatHandler(repo)
+
+	seen := map[string]bool{}
+	for i := 0; i < 4; i++ {
+		got := h.ResolveProviderProxyPoolID("opencode")
+		if got != ids[0] && got != ProxyPoolDirectID {
+			t.Fatalf("call %d: got %q, want pool or direct slot", i, got)
+		}
+		seen[got] = true
+	}
+	if !seen[ProxyPoolDirectID] || !seen[ids[0]] {
+		t.Fatalf("rotation = %v, want both the pool and the direct slot", seen)
+	}
+}

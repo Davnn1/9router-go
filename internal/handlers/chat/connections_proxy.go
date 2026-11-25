@@ -79,14 +79,14 @@ func (h *ChatHandler) getClientForConnection(connData *ConnectionData) (*http.Cl
 	// COSY signature answers 403 — not "a proxy must exist". With nothing
 	// configured those callers must keep working direct, so a strict flag
 	// alone may never turn into an error.
-	proxyIntended := connData.ProxyPoolID != ""
+	proxyIntended := connData.ProxyPoolID != "" && connData.ProxyPoolID != ProxyPoolDirectID
 
 	// 1. Resolve from ProxyPool. A pool that cannot serve traffic (deleted,
 	// inactive, or carrying no URL) makes the request fail: silently going
 	// direct would publish the operator's egress IP, which is the one thing a
 	// proxy was assigned to prevent, and the dashboard would keep showing the
 	// connection as proxied.
-	if connData.ProxyPoolID != "" {
+	if connData.ProxyPoolID != "" && connData.ProxyPoolID != ProxyPoolDirectID {
 		pool, err := h.Repo.GetProxyPool(connData.ProxyPoolID)
 		switch {
 		case err != nil || pool == nil:
@@ -170,7 +170,7 @@ func (h *ChatHandler) getClientForConnection(connData *ConnectionData) (*http.Cl
 		log.Warn("proxy", "invalid proxy pool url", "pool", connData.ProxyPoolID, "url", proxyURLStr, "error", err)
 		// The operator named a proxy and the transport cannot dial it. Under a
 		// strict connection that is a refusal, not a reason to leave directly.
-		if connData.ProxyPoolID != "" {
+		if connData.ProxyPoolID != "" && connData.ProxyPoolID != ProxyPoolDirectID {
 			// The connection is bound to this pool, so a URL the transport
 			// cannot parse is a broken assignment, not a missing one.
 			return nil, fmt.Errorf("proxy pool %q has an unparseable url", connData.ProxyPoolID)

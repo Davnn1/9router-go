@@ -102,6 +102,10 @@ type ProviderStrategy struct {
 	StrictModelAssignment bool   `json:"strictModelAssignment,omitempty"`
 	ProxyRotateStrategy   string `json:"proxyRotateStrategy,omitempty"`
 	ConnRotateStrategy    string `json:"connRotateStrategy,omitempty"`
+	// IncludeDirect puts the operator's own egress into the rotation as one
+	// slot. Without it a rotation only ever draws from proxy pools, so the
+	// direct address is used only after every pool refused.
+	IncludeDirect bool `json:"includeDirect,omitempty"`
 }
 
 // CapacityAdapterEntry defines settings for an input-modality capability adapter pool.

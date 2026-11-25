@@ -38,3 +38,8 @@ build`).
 - **Kimi OAuth refresh under the canonical id** — the OAuth client is registered
   for `kimi` as well as the legacy `kimi-coding`, so a migrated connection keeps
   refreshing instead of answering 401.
+
+- **Direct egress as a rotation slot** — `includeDirect` adds the gateway's own
+  address to a NoAuth provider's proxy rotation, so a provider can rotate over
+  direct + every active pool instead of using direct only after all pools
+  refused.

@@ -130,6 +130,9 @@ func applyProviderStrategies(s *SettingsData, raw map[string]any) {
 		if sma, ok := vm["strictModelAssignment"].(bool); ok {
 			strat.StrictModelAssignment = sma
 		}
+		if include, ok := vm["includeDirect"].(bool); ok {
+			strat.IncludeDirect = include
+		}
 		s.ProviderStrategies[k] = strat
 	}
 }
