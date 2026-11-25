@@ -703,6 +703,7 @@ var KnownProviders = map[string]ProviderConfig{
 		BaseURL:    "https://opencode.ai/inference/go/openai/v1/chat/completions",
 		AuthHeader: "Authorization",
 		AuthScheme: "bearer",
+		UsageURL:   "https://opencode.ai/inference/go/v1/usage",
 	},
 	"venice": {
 		BaseURL:        "https://api.venice.ai/api/v1/chat/completions",
@@ -871,6 +872,7 @@ var KnownProviders = map[string]ProviderConfig{
 		BaseURL:    "https://api.kimi.com/coding/v1/chat/completions",
 		AuthHeader: "Authorization",
 		AuthScheme: "bearer",
+		UsageURL:   "https://api.kimi.com/coding/v1/usages",
 	},
 	"clinepass": {
 		BaseURL:    "https://api.cline.bot/api/v1/chat/completions",
@@ -970,6 +972,7 @@ var KnownProviders = map[string]ProviderConfig{
 		BaseURL:    "https://api.kimi.com/coding/v1/chat/completions",
 		AuthHeader: "Authorization",
 		AuthScheme: "bearer",
+		UsageURL:   "https://api.kimi.com/coding/v1/usages",
 	},
 	"claude": {
 		BaseURL:    "https://api.anthropic.com/v1/messages",

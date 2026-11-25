@@ -146,7 +146,7 @@ const (
 var usageSupportedProviders = []string{
 	"antigravity", "claude", "codebuddy-cn", "codebuddy-intl", "codex",
 	"commandcode", "commandcode-goat", "deepseek", "gemini-cli", "gemini-web", "github", "glm", "glm-cn",
-	"grok-cli", "groq", "kimi", "kiro", "minimax", "minimax-cn", "minimax-code",
+	"grok-cli", "groq", "kimi", "kimi-coding", "kiro", "minimax", "minimax-cn", "minimax-code",
 	"minimax-code-global", "ollama",
 	"free-pi", "opencode-go", "opencode-zen", "qoder", "qoder-cn", "trae",
 	"vercel-ai-gateway", "xiaomi-mimo", "zed",
@@ -157,7 +157,7 @@ var usageSupportedProviders = []string{
 // (registry features.usageApikey).
 var usageApikeyProviders = []string{
 	"codebuddy-cn", "codebuddy-intl", "commandcode", "commandcode-goat", "deepseek", "gemini-web", "glm",
-	"glm-cn", "groq", "kimi", "kiro", "minimax", "minimax-cn", "ollama",
+	"glm-cn", "groq", "kimi", "kimi-coding", "kiro", "minimax", "minimax-cn", "ollama",
 	"free-pi", "opencode-go", "opencode-zen", "qoder", "qoder-cn",
 	"vercel-ai-gateway", "xiaomi-mimo",
 }

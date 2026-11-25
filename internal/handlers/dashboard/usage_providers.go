@@ -96,6 +96,10 @@ func fetchProviderUsage(ctx context.Context, provider string, data map[string]an
 		return fetchGeminiWebUsage(ctx, apiKey), true
 	case "opencode-zen":
 		return fetchOpenCodeZenUsage(ctx, apiKey, connectionBaseURL(data)), true
+	case "opencode-go":
+		return fetchOpenCodeGoUsage(ctx, apiKey), true
+	case "kimi", "kimi-coding":
+		return fetchKimiUsage(ctx, accessToken, apiKey, psd, connectionBaseURL(data)), true
 	case "free-pi":
 		// GET {origin}/me/stats — the same endpoint the CLI's free_pi_usage
 		// tool reads. free-pi reports credits, not dollars, so the handler maps
@@ -1759,6 +1763,13 @@ func fetchAntigravityDashboardUsage(ctx context.Context, accessToken, projectID 
 	if plan == "" {
 		plan = "Unknown"
 	}
+	// The quota summary groups are the same family+window buckets the
+	// Antigravity CLI reports through `agy -p /usage`, including the provider's
+	// own resetTime. Prefer them: per-model rows are projections and read as
+	// 100%-remaining noise on free-tier accounts.
+	if summary := fetchAntigravityDashboardWeekly(ctx, accessToken, pid); len(summary) > 0 {
+		return usageResult{plan: plan, quotas: summary}
+	}
 	headers := antigravityDashboardHeaders(accessToken)
 	reqBody := map[string]any{}
 	if pid != "" {
@@ -1777,6 +1788,7 @@ func fetchAntigravityDashboardUsage(ctx context.Context, accessToken, projectID 
 	if status < 200 || status >= 300 {
 		return usageResult{plan: plan, message: fmt.Sprintf("Antigravity error: quota API returned %d.", status)}
 	}
+	// No summary buckets: fall back to the per-model projection below.
 	quotas := map[string]any{}
 	isFreeTier := sub.paidTierID == "" || sub.paidTierID == "free-tier"
 	if !isFreeTier {
@@ -1793,7 +1805,7 @@ func fetchAntigravityDashboardUsage(ctx context.Context, accessToken, projectID 
 				if internal, _ := info["isInternal"].(bool); internal || !antigravityImportantModels[modelKey] {
 					continue
 				}
-				frac := usageNum(qi["remainingFraction"], 0)
+				frac := math.Max(0, math.Min(1, usageNum(qi["remainingFraction"], 0)))
 				total := 100.0
 				remPct := math.Round(frac * 100)
 				used := math.Max(0, math.Round((1.0-frac)*100))
@@ -1808,51 +1820,6 @@ func fetchAntigravityDashboardUsage(ctx context.Context, accessToken, projectID 
 					"remainingPercentage": remPct,
 					"unlimited":           false,
 					"displayName":         dn,
-				}
-			}
-		}
-	}
-	// Best-effort weekly overlay — never breaks per-model results.
-	// Hits DAILY retrieveUserQuotaSummary like upstream (PROD returns a
-	// different weekly view) and parses weekly-only buckets like upstream
-	// (no session rows — upstream shows 19 rows, not 21).
-	if weekly := fetchAntigravityDashboardWeekly(ctx, accessToken, pid); len(weekly) > 0 {
-		for key, wq := range weekly {
-			if key == "gemini_weekly" {
-				antigravityReconcileFamily(quotas, "gemini-", "image", wq)
-			} else if key == "argon_weekly" {
-				antigravityReconcileFamily(quotas, "gemini-4-argon", "", wq)
-			} else if key == "claude_gpt_weekly" {
-				antigravityReconcileFamily(quotas, "claude-", "", wq)
-			}
-			quotas[key] = wq
-		}
-
-		// Reconcile gemini_session if all gemini models are exhausted (upstream google.js parity)
-		if s, ok := quotas["gemini_session"].(map[string]any); ok {
-			allGeminiExhausted := true
-			var geminiCount int
-			var maxResetAt string
-			for k, v := range quotas {
-				if strings.HasPrefix(k, "gemini-") && !strings.Contains(k, "image") {
-					geminiCount++
-					if vm, ok := v.(map[string]any); ok {
-						if rem, ok := vm["remainingPercentage"].(float64); ok && rem > 0 {
-							allGeminiExhausted = false
-						}
-						if rAt, ok := vm["resetAt"].(string); ok && rAt != "" {
-							if maxResetAt == "" || rAt > maxResetAt {
-								maxResetAt = rAt
-							}
-						}
-					}
-				}
-			}
-			if geminiCount > 0 && allGeminiExhausted {
-				s["used"] = s["total"]
-				s["remainingPercentage"] = 0.0
-				if maxResetAt != "" {
-					s["resetAt"] = maxResetAt
 				}
 			}
 		}
@@ -1941,6 +1908,7 @@ func fetchAntigravityDashboardWeekly(ctx context.Context, accessToken, projectID
 				if !ok {
 					continue
 				}
+				frac = math.Max(0, math.Min(1, frac))
 			}
 			for _, cfg := range configs {
 				if strings.Contains(gNameLower, cfg.pattern) || (cfg.pattern == "claude" && strings.Contains(gNameLower, "gpt")) {
@@ -1983,48 +1951,4 @@ func antigravityProjectID(val any) string {
 		}
 	}
 	return ""
-}
-
-// antigravityReconcileFamily mirrors the upstream reconcile: when every model of
-// a family reads exhausted but weekly still claims availability, weekly is
-// forced to exhausted (Free Starter tier misreports remainingFraction: 1).
-func antigravityReconcileFamily(quotas map[string]any, prefix, exclude string, wqRaw any) {
-	wq, _ := wqRaw.(map[string]any)
-	if wq == nil {
-		return
-	}
-	var family []map[string]any
-	var maxReset string
-	for k, v := range quotas {
-		if !strings.HasPrefix(k, prefix) {
-			continue
-		}
-		if exclude != "" && strings.Contains(k, exclude) {
-			continue
-		}
-		m, _ := v.(map[string]any)
-		if m == nil {
-			continue
-		}
-		family = append(family, m)
-		if rs, _ := m["resetAt"].(string); rs > maxReset {
-			maxReset = rs
-		}
-	}
-	if len(family) == 0 {
-		return
-	}
-	for _, m := range family {
-		if p, _ := m["remainingPercentage"].(float64); p != 0 {
-			return
-		}
-	}
-	if pct, _ := wq["remainingPercentage"].(float64); pct > 0 {
-		total, _ := wq["total"].(float64)
-		wq["used"] = total
-		wq["remainingPercentage"] = 0.0
-		if maxReset != "" {
-			wq["resetAt"] = maxReset
-		}
-	}
 }
