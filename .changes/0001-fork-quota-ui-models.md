@@ -20,3 +20,8 @@
 Verified with `go test ./internal/handlers/dashboard/... ./internal/db/...`,
 `go build ./cmd/9router-go/`, and the full Docker web build (`tsc -b && vite
 build`).
+
+- **Kimi concurrency slot in-router** — `ForwardKimi` serialises one credential
+  with a two-second slot wait and answers 429 when the slot is held, replacing
+  the queue sidecar's only job. Combo members therefore fail over to the next
+  model instead of waiting out a long queue.

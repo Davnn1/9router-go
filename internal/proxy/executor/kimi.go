@@ -44,6 +44,12 @@ const (
 // backend accepts before forwarding, so "auto", "none", "off", "xhigh" and
 // "max" are not answered with HTTP 400 (upstream decolua/9router#2427).
 func ForwardKimi(w http.ResponseWriter, req *Request) error {
+	release, err := acquireKimiSlot(reqCtx(req), req.APIKey)
+	if err != nil {
+		return err
+	}
+	defer release()
+
 	body := normalizeKimiReasoningEffort(req.Body)
 	cleanModel := kimiModel(body)
 	if cleanModel == "" {
