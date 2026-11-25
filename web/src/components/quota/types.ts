@@ -36,6 +36,7 @@ export interface NormalizedQuota {
   percentage?: number
   colorPercentage?: number
   percentageIsUsed?: boolean
+  isPercentageOnly?: boolean
   emptyMessage?: string | null
   resetAt?: string | null
   unlimited?: boolean
@@ -970,7 +971,7 @@ export function parseQuotaData(provider: string, data: unknown): NormalizedQuota
             const used = Number(quota.used) || 0
             const total = Number(quota.total) || 0
             const row: NormalizedQuota = {
-              name: (quota.name as string) || name,
+              name: (quota.displayName as string) || (quota.name as string) || name,
               used,
               total,
               resetAt: (quota.resetAt as string) || null,
@@ -982,6 +983,7 @@ export function parseQuotaData(provider: string, data: unknown): NormalizedQuota
             if (quota.percentage !== undefined) row.percentage = Number(quota.percentage)
             if (quota.colorPercentage !== undefined) row.colorPercentage = Number(quota.colorPercentage)
             if (quota.percentageIsUsed !== undefined) row.percentageIsUsed = quota.percentageIsUsed === true
+            if (quota.isPercentageOnly !== undefined) row.isPercentageOnly = quota.isPercentageOnly === true
             if (quota.emptyMessage !== undefined) row.emptyMessage = (quota.emptyMessage as string) || null
             if (quota.unlimited !== undefined) row.unlimited = Boolean(quota.unlimited)
             if (quota.recurring !== undefined) row.recurring = quota.recurring !== false

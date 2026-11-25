@@ -1290,6 +1290,9 @@ var ProviderRegistry = map[string]ProviderMeta{
 		Color:        "#888888",
 		Icon:         "dns",
 		ServiceKinds: []string{"llm"},
+		// Legacy id kept only so stored rows and model lanes still resolve;
+		// the catalog surfaces the merged "kimi" entry instead of a second card.
+		Hidden: true,
 	},
 	"linkup": {
 		ID:           "linkup",

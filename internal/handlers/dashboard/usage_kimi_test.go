@@ -50,6 +50,9 @@ func TestFetchKimiUsage_MapsAllWindows(t *testing.T) {
 	if weekly["resetAt"] != "2026-11-21T00:00:00Z" {
 		t.Errorf("ratio reset_time must parse: %+v", weekly)
 	}
+	if weekly["name"] != "Code · 7d" || weekly["isPercentageOnly"] != true {
+		t.Errorf("ratio window must carry a friendly name: %+v", weekly)
+	}
 	limit, _ := res.quotas["code_5h"].(map[string]any)
 	if limit["used"] != 17.0 || limit["total"] != 20.0 || limit["displayName"] != "Code 5h" {
 		t.Errorf("limits window mis-mapped: %+v", limit)

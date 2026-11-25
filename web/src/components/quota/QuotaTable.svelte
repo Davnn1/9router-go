@@ -14,6 +14,7 @@
     compact?: boolean
     sortMode?: 'default' | 'remaining-asc' | 'remaining-desc'
     showSortLabel?: boolean
+    percentMode?: 'remaining' | 'used' 
     onHideQuota?: ((quota: NormalizedQuota) => void) | null
   }
 
@@ -22,6 +23,7 @@
     compact = false,
     sortMode = 'default',
     showSortLabel = false,
+    percentMode = 'remaining',
     onHideQuota = null,
   }: Props = $props()
 
@@ -37,14 +39,24 @@
   interface RowQuota extends NormalizedQuota {
     index: number
     remainingPct: number | null
+    displayPct: number | null
   }
 
   let normalizedQuotas = $derived<RowQuota[]>(
-    quotas.map((quota, index) => ({
-      ...quota,
-      index,
-      remainingPct: getRemainingPercentage(quota),
-    })),
+    quotas.map((quota, index) => {
+      const remainingPct = getRemainingPercentage(quota)
+      return {
+        ...quota,
+        index,
+        remainingPct,
+        displayPct:
+          remainingPct === null
+            ? null
+            : percentMode === 'remaining'
+              ? remainingPct
+              : Math.max(0, Math.min(100, 100 - remainingPct)),
+      }
+    }),
   )
 
   // An unknown row sorts as -1, below every real reading (upstream parity), so
@@ -143,6 +155,7 @@
         {@const isUnlimited = quota.unlimited === true}
         {@const isCreditBalance = quota.isCreditBalance === true}
         {@const isUnknown = quota.remainingPct === null}
+        {@const isPercentageOnly = quota.isPercentageOnly === true}
         {@const colors = isCreditBalance
           ? {
               text: 'text-blue-600 dark:text-blue-400',
@@ -178,7 +191,7 @@
               >
                 <div
                   class="h-full transition-all duration-300 {colors.bg}"
-                  style:width="{Math.min(quota.remainingPct ?? 0, 100)}%"
+                  style:width="{Math.min(quota.displayPct ?? 0, 100)}%"
                 ></div>
               </div>
             {/if}
@@ -200,7 +213,9 @@
                   ? `${fmtNum(quota.used)} used · Unlimited`
                   : isCreditBalance
                     ? `Credit: ${(quota.total || 0).toFixed(2)} ${quota.currency || ''}`
-                    : `${fmtNum(quota.used)} / ${(quota.total || 0) > 0 ? fmtNum(quota.total) : '∞'}`}
+                    : isPercentageOnly
+                      ? ''
+                      : `${fmtNum(quota.used)} / ${(quota.total || 0) > 0 ? fmtNum(quota.total) : '∞'}`}
               </span>
               <span
                 class="font-medium shrink-0 {isUnlimited
@@ -209,7 +224,13 @@
                     ? 'text-blue-600 dark:text-blue-400'
                     : colors.text}"
               >
-                {isUnlimited ? 'Unlimited' : isCreditBalance ? '' : isUnknown ? '—' : `${quota.remainingPct}%`}
+                {isUnlimited
+                  ? 'Unlimited'
+                  : isCreditBalance
+                    ? ''
+                    : isUnknown
+                      ? '—'
+                      : `${Math.round(quota.displayPct ?? 0)}% ${percentMode === 'remaining' ? 'left' : 'used'}`}
               </span>
             </div>
           </div>

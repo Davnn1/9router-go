@@ -2,11 +2,13 @@ package dashboard
 
 import (
 	"bytes"
+	"context"
 	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"9router/proxy/internal/db"
 	"9router/proxy/internal/handlerutil"
 	"9router/proxy/internal/log"
 	"9router/proxy/internal/models"
@@ -39,13 +41,13 @@ func (h *DashboardHandler) HandleSyncProviderModels(w http.ResponseWriter, r *ht
 		return
 	}
 
-	synced, failed, skipped, revived := 0, 0, 0, 0
+	synced, failed, skipped, revived, added := 0, 0, 0, 0, 0
 	var lastErr error
 	for _, conn := range conns {
 		if conn == nil {
 			continue
 		}
-		live, fetchErr, listable := h.fetchLiveModelIDs(r, conn)
+		live, entries, fetchErr, listable := h.fetchLiveModelIDs(r, conn)
 		if !listable {
 			// The provider has no catalogue endpoint at all. That is a
 			// property of the provider, not a failed sync, and reporting it as
@@ -69,9 +71,17 @@ func (h *DashboardHandler) HandleSyncProviderModels(w http.ResponseWriter, r *ht
 			lastErr = clearErr
 			continue
 		}
+		discovered, addErr := h.addDiscoveredModels(conn.Provider, entries)
+		if addErr != nil {
+			failed++
+			lastErr = addErr
+			log.Warn("models-sync", "could not store discovered models", "provider", conn.Provider, "error", addErr)
+			continue
+		}
 		synced++
 		revived += cleared
-		log.Info("models-sync", "catalogue refreshed", "provider", conn.Provider, "models", len(live), "revived", cleared)
+		added += discovered
+		log.Info("models-sync", "catalogue refreshed", "provider", conn.Provider, "models", len(live), "revived", cleared, "added", discovered)
 	}
 
 	if synced == 0 && skipped == 0 && failed > 0 {
@@ -85,6 +95,7 @@ func (h *DashboardHandler) HandleSyncProviderModels(w http.ResponseWriter, r *ht
 		"failed":       failed,
 		"skipped":      skipped,
 		"revived":      revived,
+		"added":        added,
 		"lastError":    errText(lastErr),
 		"catalogState": providers.GetCatalogState(),
 	})
@@ -105,27 +116,30 @@ func errText(err error) string {
 // property of the provider rather than a sync failure — the dashboard answers
 // 400 for those, and treating that as an error would make every provider
 // without a catalogue report a broken sync.
-func (h *DashboardHandler) fetchLiveModelIDs(r *http.Request, conn *models.ProviderConnection) (map[string]bool, error, bool) {
+func (h *DashboardHandler) fetchLiveModelIDs(r *http.Request, conn *models.ProviderConnection) (map[string]bool, []customModelBatchEntry, error, bool) {
 	capture := newModelsCapture()
 	h.writeConnectionModels(capture, r, conn.ID)
 	if capture.status == http.StatusBadRequest {
-		return nil, nil, false
+		return nil, nil, nil, false
 	}
 	if capture.status != http.StatusOK {
-		return nil, fmt.Errorf("catalogue unavailable: %s", strings.TrimSpace(capture.body.String())), true
+		return nil, nil, fmt.Errorf("catalogue unavailable: %s", strings.TrimSpace(capture.body.String())), true
 	}
 
 	var resp struct {
 		Models []struct {
-			ID    string `json:"id"`
-			Model string `json:"model"`
+			ID           string          `json:"id"`
+			Model        string          `json:"model"`
+			Name         string          `json:"name"`
+			Capabilities map[string]bool `json:"capabilities"`
 		} `json:"models"`
 	}
 	if err := json.Unmarshal(capture.body.Bytes(), &resp); err != nil {
-		return nil, fmt.Errorf("invalid catalogue response: %w", err), true
+		return nil, nil, fmt.Errorf("invalid catalogue response: %w", err), true
 	}
 
 	live := make(map[string]bool, len(resp.Models))
+	entries := make([]customModelBatchEntry, 0, len(resp.Models))
 	for _, m := range resp.Models {
 		id := m.ID
 		if id == "" {
@@ -135,8 +149,58 @@ func (h *DashboardHandler) fetchLiveModelIDs(r *http.Request, conn *models.Provi
 			continue
 		}
 		live[providers.DeprecationKey(conn.Provider, id)] = true
+		entries = append(entries, customModelBatchEntry{
+			ID:        id,
+			Name:      m.Name,
+			Type:      "llm",
+			Vision:    m.Capabilities["vision"],
+			Reasoning: m.Capabilities["reasoning"],
+		})
 	}
-	return live, nil, true
+	return live, entries, nil, true
+}
+
+// addDiscoveredModels stores catalogue entries the static registry does not
+// know yet as custom models, so a provider that ships a new model appears in
+// the picker without a code release. A static row, an existing custom row and
+// a passthrough provider are all left alone: the first two already resolve,
+// and the third lists its live catalogue at request time.
+func (h *DashboardHandler) addDiscoveredModels(providerID string, entries []customModelBatchEntry) (int, error) {
+	if len(entries) == 0 {
+		return 0, nil
+	}
+	if meta, ok := providers.GetProviderMeta(providerID); ok && meta.PassthroughModels {
+		return 0, nil
+	}
+	static := make(map[string]bool)
+	for _, id := range providers.GetProviderModels(providerID) {
+		static[id] = true
+	}
+	existing, err := h.Repo.GetKVScope("customModels")
+	if err != nil {
+		return 0, err
+	}
+	writes := make([]db.KVEntry, 0, len(entries))
+	seen := make(map[string]bool)
+	for _, entry := range entries {
+		if entry.ID == "" || static[entry.ID] || seen[entry.ID] {
+			continue
+		}
+		key := customModelKey(providerID, entry.ID, "llm")
+		if _, exists := existing[key]; exists {
+			continue
+		}
+		value, err := json.Marshal(customModelValue(providerID, entry.ID, "llm", entry))
+		if err != nil {
+			return len(writes), fmt.Errorf("encode discovered model %q: %w", entry.ID, err)
+		}
+		seen[entry.ID] = true
+		writes = append(writes, db.KVEntry{Key: key, Value: string(value)})
+	}
+	if err := h.Repo.SetKVMany(context.Background(), "customModels", writes); err != nil {
+		return 0, err
+	}
+	return len(writes), nil
 }
 
 // modelsCapture is a ResponseWriter that keeps what the discovery handler wrote

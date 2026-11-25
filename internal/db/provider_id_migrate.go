@@ -17,6 +17,10 @@ import (
 // email) as the node label — see #<issue>.
 var legacyProviderIDs = map[string]string{
 	"ollama-cloud": "ollama",
+	// The catalog merged the legacy kimi-coding entry into kimi (upstream
+	// registry keeps it only as an alias). Rows written under the old id keep
+	// working on the merged provider instead of failing provider lookup.
+	"kimi-coding": "kimi",
 }
 
 // MigrateLegacyProviderIDs rewrites providerConnections rows stuck on a

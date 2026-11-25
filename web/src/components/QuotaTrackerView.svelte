@@ -159,6 +159,24 @@
 
   // Quota visibility (hidden rows), persisted via /api/settings quotaVisibility
   let quotaVisibility = $state<QuotaVisibility>({})
+
+  // Which side of the same reading the quota rows show. "remaining" is the
+  // legacy view; "used" mirrors the share the provider charges against. It is
+  // a local display preference, so it lives in localStorage rather than in the
+  // server settings every client shares.
+  type PercentMode = 'remaining' | 'used'
+  const PERCENT_MODE_KEY = '9router.quotaPercentMode'
+  let percentMode = $state<PercentMode>(
+    typeof localStorage !== 'undefined' &&
+      localStorage.getItem(PERCENT_MODE_KEY) === 'used'
+      ? 'used'
+      : 'remaining',
+  )
+  $effect(() => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(PERCENT_MODE_KEY, percentMode)
+    }
+  })
   type AutoPingProvider = 'claude' | 'codex' | 'commandcode-goat'
   type AutoPingScheduleEntry = AutoPingSchedule | { enabled: false } | unknown
   let autoPingMaps = $state<Record<AutoPingProvider, Record<string, boolean>>>({
@@ -1260,6 +1278,13 @@
           onSelect={() => (autoRefresh = !autoRefresh)}
         />
         <MenuItem
+          label="Show used percentages"
+          icon="percent"
+          checkbox
+          pressed={percentMode === 'used'}
+          onSelect={() => (percentMode = percentMode === 'used' ? 'remaining' : 'used')}
+        />
+        <MenuItem
           label="Refresh all"
           icon="refresh"
           disabled={refreshingAll}
@@ -1563,6 +1588,7 @@
                   ? (quotaSortMode as 'remaining-asc' | 'remaining-desc')
                   : 'default'}
                 showSortLabel={conn.provider === 'codex' && quotaSortMode !== 'default'}
+                percentMode={percentMode}
                 onHideQuota={(quotaRow) => handleHideQuota(conn.provider, quotaRow)}
               />
               {#if visibleQuotas.length === 0 && rawQuotas.length === 0}

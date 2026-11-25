@@ -61,6 +61,7 @@ func fetchKimiUsage(ctx context.Context, accessToken, apiKey string, psd map[str
 	quotas := map[string]any{}
 	if q := kimiCountQuota(data["usage"]); q != nil {
 		q["displayName"] = "Code · 7d"
+		q["name"] = "Code · 7d"
 		quotas["code_7d"] = q
 	}
 	kimiLimitWindows(quotas, data["limits"])
@@ -236,6 +237,7 @@ func kimiLimitWindows(quotas map[string]any, value any) {
 			key = fmt.Sprintf("%s_%d", base, suffix)
 		}
 		quota["displayName"] = display
+		quota["name"] = display
 		quotas[key] = quota
 	}
 }
@@ -289,6 +291,8 @@ func kimiRatioWindows(quotas map[string]any, value any) {
 			"resetAt":             kimiResetTime(detail),
 			"unlimited":           false,
 			"displayName":         window.display,
+			"name":                window.display,
+			"isPercentageOnly":    true,
 		}
 	}
 }
@@ -311,6 +315,8 @@ func kimiUtilizationWindow(quotas map[string]any, value any, name string) {
 		"remainingPercentage": remaining,
 		"resetAt":             usageResetTime(window["resets_at"]),
 		"unlimited":           false,
+		"name":                name,
+		"isPercentageOnly":    true,
 	}
 }
 

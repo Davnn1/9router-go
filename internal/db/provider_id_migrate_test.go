@@ -16,6 +16,11 @@ func TestMigrateLegacyProviderIDs(t *testing.T) {
 		t.Fatalf("seed canonical connection: %v", err)
 	}
 	if err := repo.CreateProviderConnectionFull(
+		"conn-kimi-legacy", "kimi-coding", "oauth", "kimi@example.com", nil, "{}",
+	); err != nil {
+		t.Fatalf("seed legacy kimi connection: %v", err)
+	}
+	if err := repo.CreateProviderConnectionFull(
 		"conn-other", "antigravity", "oauth", "other@example.com", nil, "{}",
 	); err != nil {
 		t.Fatalf("seed unrelated connection: %v", err)
@@ -32,6 +37,7 @@ func TestMigrateLegacyProviderIDs(t *testing.T) {
 	}{
 		{"legacy id rewritten to canonical", "conn-legacy", "ollama"},
 		{"already-canonical row untouched", "conn-canonical", "ollama"},
+		{"merged kimi id rewritten", "conn-kimi-legacy", "kimi"},
 		{"unrelated provider untouched", "conn-other", "antigravity"},
 	}
 	for _, tt := range tests {
