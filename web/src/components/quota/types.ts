@@ -823,14 +823,24 @@ export function parseQuotaData(provider: string, data: unknown): NormalizedQuota
 
       case 'kimi':
         if (d.quotas) {
-          Object.entries(d.quotas).forEach(([name, quota]) => {
-            normalizedQuotas.push({
-              name,
-              used: Number(quota.used) || 0,
-              total: Number(quota.total) || 0,
+          Object.entries(d.quotas).forEach(([key, quota]) => {
+            const used = Number(quota.used) || 0
+            const total = Number(quota.total) || 0
+            const row: NormalizedQuota = {
+              name: (quota.displayName as string) || (quota.name as string) || key,
+              used,
+              total,
               resetAt: (quota.resetAt as string) || null,
-              remainingPercentage: quota.remainingPercentage !== undefined ? Number(quota.remainingPercentage) : undefined,
-            })
+            }
+            if (quota.remaining !== undefined) row.remaining = Number(quota.remaining)
+            if (quota.remainingPercentage !== undefined) {
+              row.remainingPercentage = Number(quota.remainingPercentage)
+            }
+            if (quota.unlimited !== undefined) row.unlimited = Boolean(quota.unlimited)
+            if (quota.isPercentageOnly !== undefined) {
+              row.isPercentageOnly = quota.isPercentageOnly === true
+            }
+            normalizedQuotas.push(row)
           })
         }
         break
