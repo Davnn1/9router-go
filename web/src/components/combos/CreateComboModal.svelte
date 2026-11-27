@@ -135,8 +135,12 @@
     // fixed the tier. A "(level)" suffix on top of it is not a level the
     // Antigravity translator can apply, so do not offer one.
     if (isTierFixedModel(thinkingParts(model).base)) return []
-    const fromCaps = capsFor(model)?.thinkingLevels
-    if (fromCaps && fromCaps.length > 0) return fromCaps
+    const caps = capsFor(model)
+    // An answered caps row is authoritative even when the list is empty: an
+    // empty set means "thinking is on, but the provider publishes no discrete
+    // levels" (Kimi highspeed twins, MiMo on some lanes). Falling through to
+    // the static floor here would resurrect levels the endpoint does not take.
+    if (caps) return caps.thinkingLevels ?? []
     return fallbackThinkingLevels(model)
   }
 
@@ -149,11 +153,14 @@
     const base = thinkingParts(model).base.toLowerCase()
     if (base.includes('k3.1-pro')) return ['low', 'high', 'max']
     if (prefix === 'kimi' || prefix === 'kimi-coding' || prefix === 'kmc' || prefix === 'km') {
-      return ['low', 'medium', 'high', 'max']
+      // Kimi's plan catalogue: lows/high/max with thinking always on, and no
+      // effort options at all for the highspeed twins ("Thinking: ON").
+      if (base.includes('highspeed')) return []
+      return ['low', 'high', 'max']
     }
     if (prefix === 'ocg' || prefix === 'opencode-go') {
       if (base.includes('deepseek')) return ['none', 'low', 'high', 'max']
-      if (base.includes('kimi')) return ['low', 'medium', 'high', 'max']
+      if (base.includes('kimi')) return ['low', 'high', 'max']
       return []
     }
     if (prefix === 'ag' || prefix === 'antigravity') {
