@@ -4528,6 +4528,10 @@ export const BUILTIN_MODELS_BY_PROVIDER: Record<string, ProviderModel[]> = {
       "name": "MiMo V2.6 Pro"
     },
     {
+      "id": "mimo-v2.6-pro-ultraspeed",
+      "name": "MiMo V2.6 Pro Ultraspeed"
+    },
+    {
       "id": "mimo-v2.5",
       "name": "MiMo V2.5"
     },
