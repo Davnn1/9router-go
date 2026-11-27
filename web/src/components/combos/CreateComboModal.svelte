@@ -131,7 +131,16 @@
   }
 
   function thinkingLevelsFor(model: string): string[] {
+    // An id that already names its tier (gemini-4-neon-medium, ...-high) has
+    // fixed the tier. A "(level)" suffix on top of it is not a level the
+    // Antigravity translator can apply, so do not offer one.
+    if (isTierFixedModel(thinkingParts(model).base)) return []
     return capsFor(model)?.thinkingLevels ?? []
+  }
+
+  function isTierFixedModel(base: string): boolean {
+    const name = base.toLowerCase()
+    return /-(low|medium|high|xhigh|minimal|max)$/.test(name) && !name.endsWith('-tiered')
   }
 
   function thinkingParts(model: string): { base: string; level: string } {
@@ -812,11 +821,16 @@
                     <option value={thinkingLevelOf(model)}>Think: {thinkingLevelOf(model)}</option>
                   {/if}
                 </select>
+              {:else if isTierFixedModel(thinkingParts(model).base)}
+                <span
+                  class="shrink-0 rounded border border-border/60 px-1 py-0.5 text-[10px] text-text-muted"
+                  title="The thinking tier is fixed by this model id; choose the family id if you need a level picker"
+                >tier fixed</span>
               {:else if capsFor(model)?.reasoning}
                 <span
                   class="shrink-0 rounded border border-border/60 px-1 py-0.5 text-[10px] text-text-muted"
-                  title="This model supports thinking, but the provider publishes no selectable levels"
-                >Think: model</span>
+                  title="Thinking is on, but the provider publishes no discrete levels; the model default applies"
+                >Think: auto</span>
               {:else}
                 <span
                   class="shrink-0 rounded border border-border/60 px-1 py-0.5 text-[10px] text-text-muted/70"
