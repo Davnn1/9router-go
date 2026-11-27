@@ -399,6 +399,9 @@ var AntigravityModelSynonyms = map[string]string{
 	"gemini-3.8-flash-low":      "gemini-3.8-flash-low",
 	"gemini-3.8-flash-agent":    "gemini-3.8-flash-high",
 	"gemini-3.8-flash-thinking": "gemini-3.8-flash-high",
+	// Legacy alias used by OmniRoute-style clients; the tier still comes from
+	// the request's "(level)" suffix or reasoning_effort.
+	"gemini-3.8-flash-tiered": "gemini-3.8-flash-medium",
 	// 3.7 flash tiered models -> backend model: gemini-3.7-flash-tiered
 	"gemini-3.7-flash":           "gemini-3.7-flash-tiered",
 	"gemini-3.7-flash-high":      "gemini-3.7-flash-tiered",
@@ -454,6 +457,13 @@ var antigravityUpstreamModelIDs = map[string]string{
 	"gemini-3.8-flash-high":   "gemini-3.8-flash-high",
 	"gemini-3.8-flash-medium": "gemini-3.8-flash-medium",
 	"gemini-3.8-flash-low":    "gemini-3.8-flash-low",
+	// The retired 3.8 "tiered" spelling is what OmniRoute exposes as a virtual
+	// model. 3.8 serves one backend id per tier, so map the family name onto
+	// the tier the client asked for instead of forwarding a 404.
+	"gemini-3.8-flash-tiered":        "gemini-3.8-flash-medium",
+	"gemini-3.8-flash-tiered-high":   "gemini-3.8-flash-high",
+	"gemini-3.8-flash-tiered-medium": "gemini-3.8-flash-medium",
+	"gemini-3.8-flash-tiered-low":    "gemini-3.8-flash-low",
 	// 3.7 and 3.6 share one tiered backend id per family.
 	"gemini-3.7-flash":        "gemini-3.7-flash-tiered",
 	"gemini-3.7-flash-high":   "gemini-3.7-flash-tiered",

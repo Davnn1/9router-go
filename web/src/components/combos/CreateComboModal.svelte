@@ -93,6 +93,29 @@
   let draggedIdx = $state<number | null>(null)
   let dragOverIdx = $state<number | null>(null)
 
+  // A per-member "(level)" suffix is the gateway's existing thinking intent:
+  // the suffix wins over the client's reasoning_effort for that member only.
+  // Keeping it in the model string means the stored combo schema does not
+  // change, and a combo without a suffix keeps inheriting the composer level.
+  const THINKING_LEVELS = ['auto', 'none', 'low', 'medium', 'high', 'max'] as const
+
+  function thinkingParts(model: string): { base: string; level: string } {
+    const match = /^(.*)\(([^()]+)\)$/.exec(model)
+    if (!match) return { base: model, level: '' }
+    return { base: match[1], level: match[2].toLowerCase() }
+  }
+
+  function thinkingLevelOf(model: string): string {
+    return thinkingParts(model).level
+  }
+
+  function setThinkingLevel(idx: number, level: string) {
+    const arr = [...models]
+    const base = thinkingParts(arr[idx]).base
+    arr[idx] = level ? `${base}(${level})` : base
+    onUpdateModels(arr)
+  }
+
   // Smart rules. The modal is remounted per open (the {#key} block in
   // CombosView), so reading the stored list once here is the reset.
   let rules = $state<SmartRule[]>(parseSmartRules(editingCombo?.matchRules))
@@ -686,7 +709,7 @@
       {:else}
         <div class="flex flex-col gap-1 max-h-[55vh] overflow-y-auto sm:max-h-[350px]">
           {#each models as model, idx}
-            {@const caps = getModelCaps(model)}
+            {@const caps = getModelCaps(thinkingParts(model).base)}
             <div
               class="group flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 transition-colors {draggedIdx === idx ? 'opacity-40 bg-brand-500/10' : dragOverIdx === idx ? 'border-2 border-brand-500 bg-brand-500/5' : 'bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/[0.02] dark:hover:bg-white/[0.04]'}"
               draggable="true"
@@ -738,6 +761,17 @@
                   </code>
                 </div>
               {/if}
+              <select
+                value={thinkingLevelOf(model)}
+                onchange={(e) => setThinkingLevel(idx, e.currentTarget.value)}
+                class="shrink-0 rounded border border-border bg-surface px-1 py-0.5 text-[10px] text-text-main focus:outline-none focus:border-brand-500 cursor-pointer"
+                title="Thinking level for this combo member (overrides the composer level)"
+              >
+                <option value="">Think: default</option>
+                {#each THINKING_LEVELS as level (level)}
+                  <option value={level}>Think: {level}</option>
+                {/each}
+              </select>
               {#if caps.vision}
                 <Eye class="w-3 h-3 text-blue-500 shrink-0" title="Vision — Supports image input" />
               {/if}
