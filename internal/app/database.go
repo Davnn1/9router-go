@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 
@@ -11,6 +12,7 @@ import (
 	"9router/proxy/internal/config"
 	"9router/proxy/internal/db"
 	"9router/proxy/internal/log"
+	"9router/proxy/internal/providers"
 	"9router/proxy/internal/translator"
 	"9router/proxy/internal/vault"
 )
@@ -61,6 +63,21 @@ func ProvideDatabase(lc fx.Lifecycle, cfg *config.Config) (*sql.DB, error) {
 	// not block startup, it should just keep failing the way it already was.
 	if err := db.MigrateLegacyProviderIDs(conn); err != nil {
 		log.Warn("db", "legacy provider id migration failed", "error", err)
+	}
+	// Replay the tier sets a previous Sync Models learned, so a restart does
+	// not hide a virtual Gemini family until the next sync.
+	if rows, err := conn.Query(`SELECT key, value FROM kv WHERE scope = 'antigravityFamilies'`); err == nil {
+		for rows.Next() {
+			var base, raw string
+			if rows.Scan(&base, &raw) != nil {
+				continue
+			}
+			var tiers []string
+			if json.Unmarshal([]byte(raw), &tiers) == nil {
+				providers.RegisterAntigravityFamily(base, tiers)
+			}
+		}
+		_ = rows.Close()
 	}
 
 	// Cross-process lease table for upstream coordination (Freebuff

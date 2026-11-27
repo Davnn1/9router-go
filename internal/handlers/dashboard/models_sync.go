@@ -72,7 +72,9 @@ func (h *DashboardHandler) HandleSyncProviderModels(w http.ResponseWriter, r *ht
 			continue
 		}
 		if conn.Provider == "antigravity" || conn.Provider == "ag" {
-			entries = append(entries, antigravityVirtualFamilies(entries)...)
+			virtual, families := antigravityVirtualFamilies(entries)
+			entries = append(entries, virtual...)
+			h.persistAntigravityFamilies(families)
 		}
 		discovered, addErr := h.addDiscoveredModels(conn.Provider, entries)
 		if addErr != nil {
@@ -168,7 +170,7 @@ func (h *DashboardHandler) fetchLiveModelIDs(r *http.Request, conn *models.Provi
 // gemini-4-neon-low/medium/high/...; the translator can route a bare family
 // plus a level to those ids, but the picker needs the family row. New families
 // are discovered on the same Sync Models click instead of being hand-added.
-func antigravityVirtualFamilies(entries []customModelBatchEntry) []customModelBatchEntry {
+func antigravityVirtualFamilies(entries []customModelBatchEntry) ([]customModelBatchEntry, map[string][]string) {
 	seen := make(map[string]bool, len(entries))
 	tiers := make(map[string]map[string]bool)
 	suffixTier := []struct{ suffix, tier string }{
@@ -206,15 +208,17 @@ func antigravityVirtualFamilies(entries []customModelBatchEntry) []customModelBa
 		}
 	}
 	out := make([]customModelBatchEntry, 0, len(tiers))
+	registered := make(map[string][]string, len(tiers))
 	for base, familyTiers := range tiers {
 		if len(familyTiers) < 2 {
 			continue
 		}
-		registered := make([]string, 0, len(familyTiers))
+		tierList := make([]string, 0, len(familyTiers))
 		for tier := range familyTiers {
-			registered = append(registered, tier)
+			tierList = append(tierList, tier)
 		}
-		providers.RegisterAntigravityFamily(base, registered)
+		providers.RegisterAntigravityFamily(base, tierList)
+		registered[base] = append([]string(nil), providers.AntigravityFamilyLevels(base)...)
 		name := strings.ReplaceAll(base, "-", " ")
 		if parts := strings.Fields(name); len(parts) > 0 {
 			for i, part := range parts {
@@ -234,7 +238,26 @@ func antigravityVirtualFamilies(entries []customModelBatchEntry) []customModelBa
 			MaxOutput:     65536,
 		})
 	}
-	return out
+	return out, registered
+}
+
+// persistAntigravityFamilies keeps the learned tier sets across restarts; the
+// startup loader replays them into the in-process registry.
+func (h *DashboardHandler) persistAntigravityFamilies(families map[string][]string) {
+	if h.Repo == nil || len(families) == 0 {
+		return
+	}
+	writes := make([]db.KVEntry, 0, len(families))
+	for base, tiers := range families {
+		value, err := json.Marshal(tiers)
+		if err != nil {
+			continue
+		}
+		writes = append(writes, db.KVEntry{Key: base, Value: string(value)})
+	}
+	if err := h.Repo.SetKVMany(context.Background(), "antigravityFamilies", writes); err != nil {
+		log.Warn("models-sync", "could not persist antigravity families", "error", err)
+	}
 }
 
 // addDiscoveredModels stores catalogue entries the static registry does not

@@ -65,7 +65,7 @@ func TestAntigravityVirtualFamiliesDeriveBareIDs(t *testing.T) {
 		{ID: "gemini-4-hydrogen-high"},
 		{ID: "gemini-4-argon"},
 	}
-	got := antigravityVirtualFamilies(entries)
+	got, _ := antigravityVirtualFamilies(entries)
 	ids := map[string]string{}
 	for _, entry := range got {
 		ids[entry.ID] = entry.Name
