@@ -152,7 +152,7 @@
       return ['low', 'medium', 'high', 'max']
     }
     if (prefix === 'ocg' || prefix === 'opencode-go') {
-      if (base.includes('deepseek')) return ['none', 'low', 'medium', 'high', 'xhigh', 'max']
+      if (base.includes('deepseek')) return ['none', 'low', 'high', 'max']
       if (base.includes('kimi')) return ['low', 'medium', 'high', 'max']
       return []
     }

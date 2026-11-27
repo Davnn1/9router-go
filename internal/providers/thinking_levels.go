@@ -78,6 +78,11 @@ var patternThinking = []thinkingPattern{
 	// Kimi K3.1 Pro always reasons and accepts only low/high/max; medium and
 	// the OpenAI aliases are not part of its documented effort vocabulary.
 	{Pattern: "*k3.1-pro*", Levels: []string{"low", "high", "max"}},
+	// DeepSeek's documented reasoning_effort vocabulary is low/high/max;
+	// medium/xhigh are folded upstream rather than exposed. The OpenCode Go
+	// lane shares that wire even though its registry format is openai.
+	{Provider: "opencode-go", Pattern: "*deepseek-v4.1-flash*", Levels: []string{"none", "low", "high", "max"}},
+	{Provider: "ocg", Pattern: "*deepseek-v4.1-flash*", Levels: []string{"none", "low", "high", "max"}},
 	// Gemini Omni accepts only HIGH and LOW — AI Studio answers 400 "protocol
 	// error 3: 'medium' is not a supported thinking level for this model.
 	// Allowed values are: high, low." Declaring HIGH alone (rather than
