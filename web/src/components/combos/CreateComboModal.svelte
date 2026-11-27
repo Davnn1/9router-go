@@ -135,7 +135,30 @@
     // fixed the tier. A "(level)" suffix on top of it is not a level the
     // Antigravity translator can apply, so do not offer one.
     if (isTierFixedModel(thinkingParts(model).base)) return []
-    return capsFor(model)?.thinkingLevels ?? []
+    const fromCaps = capsFor(model)?.thinkingLevels
+    if (fromCaps && fromCaps.length > 0) return fromCaps
+    return fallbackThinkingLevels(model)
+  }
+
+  // The live/custom catalogue can contain a model the caps endpoint does not
+  // list yet (a Kimi alias such as k3.1-pro, for example). These are the level
+  // sets the provider's wire already accepts; caps still wins whenever it
+  // answers, so this is a floor rather than a replacement.
+  function fallbackThinkingLevels(model: string): string[] {
+    const prefix = model.split('/')[0]?.toLowerCase() ?? ''
+    const base = thinkingParts(model).base.toLowerCase()
+    if (prefix === 'kimi' || prefix === 'kimi-coding' || prefix === 'kmc' || prefix === 'km') {
+      return ['low', 'medium', 'high', 'max']
+    }
+    if (prefix === 'ocg' || prefix === 'opencode-go') {
+      if (base.includes('deepseek')) return ['none', 'low', 'medium', 'high', 'xhigh', 'max']
+      if (base.includes('kimi')) return ['low', 'medium', 'high', 'max']
+      return []
+    }
+    if (prefix === 'ag' || prefix === 'antigravity') {
+      if (base.includes('gemini') || base.includes('claude')) return ['low', 'medium', 'high']
+    }
+    return []
   }
 
   function isTierFixedModel(base: string): boolean {
