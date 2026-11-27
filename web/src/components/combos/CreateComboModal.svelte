@@ -9,7 +9,7 @@
     Plus,
     X
   } from 'lucide-svelte'
-  import type { Combo, ComboRulesPreview, SmartRule } from '../../api/client'
+  import type { Combo, ComboRulesPreview, ModelCaps, SmartRule } from '../../api/client'
   import { api } from '../../api/client'
   import { getModelCaps } from '../../lib/models'
   import Button from '../../lib/ui/Button.svelte'
@@ -97,7 +97,42 @@
   // the suffix wins over the client's reasoning_effort for that member only.
   // Keeping it in the model string means the stored combo schema does not
   // change, and a combo without a suffix keeps inheriting the composer level.
-  const THINKING_LEVELS = ['auto', 'none', 'low', 'medium', 'high', 'max'] as const
+  let capsByProvider = $state<Record<string, Record<string, ModelCaps>>>({})
+  const capsLoading = new Set<string>()
+
+  // Thinking levels are a property of the model, not a fixed list: Gemini
+  // offers low/medium/high, Claude adds max, DeepSeek folds low/med to high,
+  // and a model without reasoning has no levels at all. The caps endpoint is
+  // the same one the provider page uses, so the combo selector cannot drift
+  // from the model picker.
+  $effect(() => {
+    const prefixes = new Set(
+      models
+        .map((model) => model.split('/')[0]?.trim())
+        .filter((prefix): prefix is string => Boolean(prefix)),
+    )
+    for (const prefix of prefixes) {
+      if (capsByProvider[prefix] || capsLoading.has(prefix)) continue
+      capsLoading.add(prefix)
+      void api
+        .getModelCaps(prefix)
+        .then((res) => {
+          capsByProvider = { ...capsByProvider, [prefix]: res.caps || {} }
+        })
+        .catch(() => {})
+        .finally(() => capsLoading.delete(prefix))
+    }
+  })
+
+  function capsFor(model: string): ModelCaps | undefined {
+    const prefix = model.split('/')[0]
+    if (!prefix) return undefined
+    return capsByProvider[prefix]?.[thinkingParts(model).base]
+  }
+
+  function thinkingLevelsFor(model: string): string[] {
+    return capsFor(model)?.thinkingLevels ?? []
+  }
 
   function thinkingParts(model: string): { base: string; level: string } {
     const match = /^(.*)\(([^()]+)\)$/.exec(model)
@@ -710,6 +745,7 @@
         <div class="flex flex-col gap-1 max-h-[55vh] overflow-y-auto sm:max-h-[350px]">
           {#each models as model, idx}
             {@const caps = getModelCaps(thinkingParts(model).base)}
+            {@const levels = thinkingLevelsFor(model)}
             <div
               class="group flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 transition-colors {draggedIdx === idx ? 'opacity-40 bg-brand-500/10' : dragOverIdx === idx ? 'border-2 border-brand-500 bg-brand-500/5' : 'bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/[0.02] dark:hover:bg-white/[0.04]'}"
               draggable="true"
@@ -761,17 +797,32 @@
                   </code>
                 </div>
               {/if}
-              <select
-                value={thinkingLevelOf(model)}
-                onchange={(e) => setThinkingLevel(idx, e.currentTarget.value)}
-                class="shrink-0 rounded border border-border bg-surface px-1 py-0.5 text-[10px] text-text-main focus:outline-none focus:border-brand-500 cursor-pointer"
-                title="Thinking level for this combo member (overrides the composer level)"
-              >
-                <option value="">Think: default</option>
-                {#each THINKING_LEVELS as level (level)}
-                  <option value={level}>Think: {level}</option>
-                {/each}
-              </select>
+              {#if levels.length > 0}
+                <select
+                  value={thinkingLevelOf(model)}
+                  onchange={(e) => setThinkingLevel(idx, e.currentTarget.value)}
+                  class="shrink-0 rounded border border-border bg-surface px-1 py-0.5 text-[10px] text-text-main focus:outline-none focus:border-brand-500 cursor-pointer"
+                  title="Thinking levels reported for this model (overrides the composer level)"
+                >
+                  <option value="">Think: default</option>
+                  {#each levels as level (level)}
+                    <option value={level}>Think: {level}</option>
+                  {/each}
+                  {#if thinkingLevelOf(model) && !levels.includes(thinkingLevelOf(model))}
+                    <option value={thinkingLevelOf(model)}>Think: {thinkingLevelOf(model)}</option>
+                  {/if}
+                </select>
+              {:else if capsFor(model)?.reasoning}
+                <span
+                  class="shrink-0 rounded border border-border/60 px-1 py-0.5 text-[10px] text-text-muted"
+                  title="This model supports thinking, but the provider publishes no selectable levels"
+                >Think: model</span>
+              {:else}
+                <span
+                  class="shrink-0 rounded border border-border/60 px-1 py-0.5 text-[10px] text-text-muted/70"
+                  title="This model has no thinking mode"
+                >no think</span>
+              {/if}
               {#if caps.vision}
                 <Eye class="w-3 h-3 text-blue-500 shrink-0" title="Vision — Supports image input" />
               {/if}
