@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"9router/proxy/internal/log"
+	"9router/proxy/internal/providers"
 )
 
 // maxAntigravityOutputTokens caps generationConfig.maxOutputTokens; Google's
@@ -401,9 +402,6 @@ var AntigravityModelSynonyms = map[string]string{
 	"gemini-3.8-flash-low":      "gemini-3.8-flash-low",
 	"gemini-3.8-flash-agent":    "gemini-3.8-flash-high",
 	"gemini-3.8-flash-thinking": "gemini-3.8-flash-high",
-	// Legacy alias used by OmniRoute-style clients; the tier still comes from
-	// the request's "(level)" suffix or reasoning_effort.
-	"gemini-3.8-flash-tiered": "gemini-3.8-flash-medium",
 	// 3.7 flash tiered models -> backend model: gemini-3.7-flash-tiered
 	"gemini-3.7-flash":           "gemini-3.7-flash-tiered",
 	"gemini-3.7-flash-high":      "gemini-3.7-flash-tiered",
@@ -461,13 +459,6 @@ var antigravityUpstreamModelIDs = map[string]string{
 	"gemini-3.8-flash-high":   "gemini-3.8-flash-high",
 	"gemini-3.8-flash-medium": "gemini-3.8-flash-medium",
 	"gemini-3.8-flash-low":    "gemini-3.8-flash-low",
-	// The retired 3.8 "tiered" spelling is what OmniRoute exposes as a virtual
-	// model. 3.8 serves one backend id per tier, so map the family name onto
-	// the tier the client asked for instead of forwarding a 404.
-	"gemini-3.8-flash-tiered":        "gemini-3.8-flash-medium",
-	"gemini-3.8-flash-tiered-high":   "gemini-3.8-flash-high",
-	"gemini-3.8-flash-tiered-medium": "gemini-3.8-flash-medium",
-	"gemini-3.8-flash-tiered-low":    "gemini-3.8-flash-low",
 	// 3.7 and 3.6 share one tiered backend id per family.
 	"gemini-3.7-flash":        "gemini-3.7-flash-tiered",
 	"gemini-3.7-flash-high":   "gemini-3.7-flash-tiered",
@@ -532,7 +523,7 @@ func AntigravityUpstreamModel(model string) string {
 // a tier.
 func AntigravityEffortTier(model string, clientBody []byte) string {
 	if idx := strings.Index(model, "("); idx != -1 && strings.HasSuffix(model, ")") {
-		return antigravityNormalizeTier(strings.ToLower(strings.TrimSpace(model[idx+1 : len(model)-1])))
+		return antigravityTierForFamily(stripParenthesisedSuffix(strings.ToLower(strings.TrimSpace(model))), strings.ToLower(strings.TrimSpace(model[idx+1:len(model)-1])))
 	}
 	if len(clientBody) == 0 {
 		return ""
@@ -564,7 +555,7 @@ func AntigravityEffortTier(model string, clientBody []byte) string {
 		}
 	}
 	if effort != "" {
-		return antigravityNormalizeTier(strings.ToLower(strings.TrimSpace(effort)))
+		return antigravityTierForFamily(stripParenthesisedSuffix(strings.ToLower(strings.TrimSpace(model))), strings.ToLower(strings.TrimSpace(effort)))
 	}
 	if thinking, ok := probe["thinking"].(map[string]any); ok {
 		if b, ok := antigravityToFloat(thinking["budget_tokens"]); ok && b > 0 {
@@ -579,6 +570,16 @@ func AntigravityEffortTier(model string, clientBody []byte) string {
 		}
 	}
 	return ""
+}
+
+// antigravityTierForFamily keeps a newly discovered max/ultra tier when the
+// live catalogue actually serves it, instead of folding it to high as the
+// legacy Google tiers do.
+func antigravityTierForFamily(base, tier string) string {
+	if (tier == "max" || tier == "ultra") && providers.AntigravityFamilyServesTier(base, tier) {
+		return tier
+	}
+	return antigravityNormalizeTier(tier)
 }
 
 func antigravityNormalizeTier(level string) string {
@@ -627,7 +628,11 @@ func AntigravityTieredModel(model string, clientBody []byte) string {
 // and ask for a level; the translator resolves that to the tier id Google
 // actually serves instead of forwarding a 404.
 func antigravityFamilyServesTier(base, tier string) bool {
+	if providers.AntigravityFamilyServesTier(base, tier) {
+		return true
+	}
 	tiers, ok := map[string]map[string]bool{
+		"gemini-3.8-flash":  {"low": true, "medium": true, "high": true},
 		"gemini-4-neon":     {"low": true, "medium": true, "high": true, "xhigh": true},
 		"gemini-4-hydrogen": {"low": true, "medium": true, "high": true, "xhigh": true},
 		"gemini-4-argon":    {"low": true, "medium": true, "high": true},

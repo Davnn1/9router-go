@@ -170,7 +170,12 @@ func (h *DashboardHandler) fetchLiveModelIDs(r *http.Request, conn *models.Provi
 // are discovered on the same Sync Models click instead of being hand-added.
 func antigravityVirtualFamilies(entries []customModelBatchEntry) []customModelBatchEntry {
 	seen := make(map[string]bool, len(entries))
-	tiers := make(map[string]int)
+	tiers := make(map[string]map[string]bool)
+	suffixTier := []struct{ suffix, tier string }{
+		{"-minimal", "minimal"}, {"-low", "low"}, {"-medium", "medium"},
+		{"-high", "high"}, {"-xhigh", "xhigh"}, {"-max", "max"}, {"-ultra", "ultra"},
+		{"-tiered-high", "high"}, {"-tiered-xhigh", "xhigh"},
+	}
 	for _, entry := range entries {
 		if entry.ID != "" {
 			seen[entry.ID] = true
@@ -179,9 +184,11 @@ func antigravityVirtualFamilies(entries []customModelBatchEntry) []customModelBa
 	for _, entry := range entries {
 		id := strings.ToLower(entry.ID)
 		base := id
-		for _, suffix := range []string{"-low", "-medium", "-high", "-xhigh", "-minimal", "-sonar", "-tiered-high", "-tiered-xhigh"} {
-			if strings.HasSuffix(base, suffix) {
-				base = strings.TrimSuffix(base, suffix)
+		tier := ""
+		for _, item := range suffixTier {
+			if strings.HasSuffix(base, item.suffix) {
+				base = strings.TrimSuffix(base, item.suffix)
+				tier = item.tier
 				break
 			}
 		}
@@ -191,13 +198,23 @@ func antigravityVirtualFamilies(entries []customModelBatchEntry) []customModelBa
 		if _, ok := seen[base]; ok {
 			continue
 		}
-		tiers[base]++
+		if tiers[base] == nil {
+			tiers[base] = map[string]bool{}
+		}
+		if tier != "" {
+			tiers[base][tier] = true
+		}
 	}
 	out := make([]customModelBatchEntry, 0, len(tiers))
-	for base, count := range tiers {
-		if count < 2 {
+	for base, familyTiers := range tiers {
+		if len(familyTiers) < 2 {
 			continue
 		}
+		registered := make([]string, 0, len(familyTiers))
+		for tier := range familyTiers {
+			registered = append(registered, tier)
+		}
+		providers.RegisterAntigravityFamily(base, registered)
 		name := strings.ReplaceAll(base, "-", " ")
 		if parts := strings.Fields(name); len(parts) > 0 {
 			for i, part := range parts {

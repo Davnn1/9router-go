@@ -130,8 +130,8 @@ var patternThinking = []thinkingPattern{
 	// unreachable here (the deepseek wire branch clamps max to high when the
 	// declared set lacks it).
 	{Provider: "opencode", Pattern: "*mimo*v2.6*", Levels: []string{"none", "minimal", "low", "medium", "high", "xhigh", "max"}},
-	{Provider: "opencode-go", Pattern: "*mimo*v2.6*", Levels: []string{"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}},
-	{Provider: "ocg", Pattern: "*mimo*v2.6*", Levels: []string{"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}},
+	{Provider: "opencode-go", Pattern: "*mimo*v2.6*", Levels: []string{"none", "low", "high"}},
+	{Provider: "ocg", Pattern: "*mimo*v2.6*", Levels: []string{"none", "low", "high"}},
 	{Pattern: "*mimo*v2.6*", Levels: []string{"none", "low", "medium", "high", "xhigh"}},
 	// mimo-v2.5-pro on opencode-go rejects reasoning_effort "max" (probed live);
 	// v2.5 accepts it.
@@ -220,6 +220,11 @@ func GetThinkingLevels(provider, model string) []string {
 	caps := GetCapabilitiesForModel(provider, model)
 	if !caps.Reasoning {
 		return nil
+	}
+	if provider == "antigravity" || provider == "ag" || provider == "gemini-cli" {
+		if levels := AntigravityFamilyLevels(model); len(levels) > 0 {
+			return levels
+		}
 	}
 
 	// A registry-declared per-model set wins over everything, then the pattern

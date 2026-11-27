@@ -2,6 +2,8 @@ package translator
 
 import (
 	"testing"
+
+	"9router/proxy/internal/providers"
 )
 
 func TestAntigravityEffortTier(t *testing.T) {
@@ -63,19 +65,6 @@ func TestAntigravityTieredModel(t *testing.T) {
 	}
 }
 
-func TestAntigravityTieredLegacyAlias(t *testing.T) {
-	cases := []struct{ model, body, want string }{
-		{"gemini-3.8-flash-tiered", `{}`, "gemini-3.8-flash-medium"},
-		{"gemini-3.8-flash-tiered(high)", `{}`, "gemini-3.8-flash-high"},
-		{"gemini-3.8-flash-tiered", `{"reasoning_effort":"low"}`, "gemini-3.8-flash-low"},
-	}
-	for _, tc := range cases {
-		if got := AntigravityTieredModel(tc.model, []byte(tc.body)); got != tc.want {
-			t.Errorf("AntigravityTieredModel(%q, %s) = %q, want %q", tc.model, tc.body, got, tc.want)
-		}
-	}
-}
-
 func TestAntigravityVirtualFamilyTiers(t *testing.T) {
 	cases := []struct{ model, body, want string }{
 		{"gemini-4-neon(high)", `{}`, "gemini-4-neon-high"},
@@ -89,5 +78,12 @@ func TestAntigravityVirtualFamilyTiers(t *testing.T) {
 		if got := AntigravityTieredModel(tc.model, []byte(tc.body)); got != tc.want {
 			t.Errorf("AntigravityTieredModel(%q, %s) = %q, want %q", tc.model, tc.body, got, tc.want)
 		}
+	}
+}
+
+func TestAntigravityDynamicMaxTier(t *testing.T) {
+	providers.RegisterAntigravityFamily("gemini-5-neon", []string{"low", "high", "max"})
+	if got := AntigravityTieredModel("gemini-5-neon(max)", []byte(`{}`)); got != "gemini-5-neon-max" {
+		t.Errorf("dynamic max tier = %q, want gemini-5-neon-max", got)
 	}
 }

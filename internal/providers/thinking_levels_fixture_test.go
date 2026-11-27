@@ -126,9 +126,9 @@ var pendingUpstreamDivergences = map[string]map[string][]string{
 		"muse-spark-1.2-contributor": {"minimal", "low", "medium", "high", "xhigh"},
 		"muse-spark-1.3-contributor": {"minimal", "low", "medium", "high", "xhigh"},
 		"deepseek-v4.1-flash":        {"none", "low", "high", "max"},
-		"mimo-v2.6-flash":            {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"},
-		"mimo-v2.6-pro":              {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"},
-		"mimo-v2.6-pro-ultraspeed":   {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"},
+		"mimo-v2.6-flash":            {"none", "low", "high"},
+		"mimo-v2.6-pro":              {"none", "low", "high"},
+		"mimo-v2.6-pro-ultraspeed":   {"none", "low", "high"},
 	},
 	"muse": {
 		"muse-spark-1.2-contributor": {"minimal", "low", "medium", "high", "xhigh"},
@@ -161,8 +161,8 @@ var pendingUpstreamDivergences = map[string]map[string][]string{
 		// DeepSeek's own documentation exposes low/high/max; medium and xhigh
 		// are folded. Go reports the documented set, not the generic openai one.
 		"deepseek-v4.1-flash": {"none", "low", "high", "max"},
-		"mimo-v2.6-flash":     {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"},
-		"mimo-v2.6-pro":       {"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"},
+		"mimo-v2.6-flash":     {"none", "low", "high"},
+		"mimo-v2.6-pro":       {"none", "low", "high"},
 	},
 	"opencode-zen": {
 		"gemini-3.8-flash":                {"low", "medium", "high"},
