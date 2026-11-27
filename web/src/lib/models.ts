@@ -3435,6 +3435,14 @@ export const BUILTIN_MODELS_BY_PROVIDER: Record<string, ProviderModel[]> = {
       "name": "Kimi K3 (Code)"
     },
     {
+      "id": "k3.1-pro",
+      "name": "Kimi K3.1 Pro"
+    },
+    {
+      "id": "k3.1-pro-highspeed",
+      "name": "Kimi K3.1 Pro Highspeed"
+    },
+    {
       "id": "kimi-for-coding",
       "name": "Kimi for Coding"
     },

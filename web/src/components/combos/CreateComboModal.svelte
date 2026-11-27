@@ -147,6 +147,7 @@
   function fallbackThinkingLevels(model: string): string[] {
     const prefix = model.split('/')[0]?.toLowerCase() ?? ''
     const base = thinkingParts(model).base.toLowerCase()
+    if (base.includes('k3.1-pro')) return ['low', 'high', 'max']
     if (prefix === 'kimi' || prefix === 'kimi-coding' || prefix === 'kmc' || prefix === 'km') {
       return ['low', 'medium', 'high', 'max']
     }

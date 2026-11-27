@@ -75,6 +75,9 @@ type thinkingPattern struct {
 // patternThinking is ordered; the first match wins
 // (thinkingLevels.js:38).
 var patternThinking = []thinkingPattern{
+	// Kimi K3.1 Pro always reasons and accepts only low/high/max; medium and
+	// the OpenAI aliases are not part of its documented effort vocabulary.
+	{Pattern: "*k3.1-pro*", Levels: []string{"low", "high", "max"}},
 	// Gemini Omni accepts only HIGH and LOW — AI Studio answers 400 "protocol
 	// error 3: 'medium' is not a supported thinking level for this model.
 	// Allowed values are: high, low." Declaring HIGH alone (rather than
