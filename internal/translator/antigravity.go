@@ -576,7 +576,7 @@ func AntigravityEffortTier(model string, clientBody []byte) string {
 // live catalogue actually serves it, instead of folding it to high as the
 // legacy Google tiers do.
 func antigravityTierForFamily(base, tier string) string {
-	if (tier == "max" || tier == "ultra") && providers.AntigravityFamilyServesTier(base, tier) {
+	if providers.AntigravityFamilyServesTier(base, tier) {
 		return tier
 	}
 	return antigravityNormalizeTier(tier)
