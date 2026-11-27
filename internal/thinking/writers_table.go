@@ -329,7 +329,7 @@ func writeKimi(c *writerCtx) {
 		return
 	}
 	if e := ToKimiReasoningEffort(c.eff); e != "" {
-		c.body["reasoning_effort"] = e
+		c.body["reasoning_effort"] = levelFor(e, c.supported)
 	}
 }
 

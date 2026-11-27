@@ -267,7 +267,13 @@ func GetThinkingLevels(provider, model string) []string {
 	if !caps.CanDisableThinking() {
 		levels = withoutLevel(levels, "none")
 	}
-	return append([]string(nil), levels...)
+	// Keep nil and empty distinct: nil means "this model cannot reason", an
+	// empty non-nil set means "the model reasons but publishes no discrete
+	// levels". The thinking writer drops the client's effort on the latter
+	// instead of guessing a level the endpoint never advertised.
+	out := make([]string, len(levels))
+	copy(out, levels)
+	return out
 }
 
 // withoutLevel returns levels without the given level.

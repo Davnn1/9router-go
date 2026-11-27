@@ -288,3 +288,22 @@ func sameValue(a, b any) bool {
 	}
 	return string(ab) == string(bb)
 }
+
+// A model that reasons but publishes no discrete levels (Kimi's highspeed
+// twins: models.dev reasoning_options []) must not receive a guessed effort.
+// The client's field is stripped and the upstream default stands.
+func TestApplyDropsEffortOnModelWithoutPublishedLevels(t *testing.T) {
+	out := apply(t, "openai", "kimi", "kimi-for-coding-highspeed",
+		map[string]any{"model": "kimi-for-coding-highspeed", "reasoning_effort": "medium"}, nil)
+	mustAbsent(t, out, "reasoning_effort")
+}
+
+// The same request against a model that does publish levels still clamps to
+// the closest one it accepts.
+func TestApplyClampsEffortOnKimiForCoding(t *testing.T) {
+	out := apply(t, "openai", "kimi", "kimi-for-coding",
+		map[string]any{"model": "kimi-for-coding", "reasoning_effort": "medium"}, nil)
+	if out["reasoning_effort"] != "low" {
+		t.Fatalf("reasoning_effort = %v, want low (full body: %+v)", out["reasoning_effort"], out)
+	}
+}

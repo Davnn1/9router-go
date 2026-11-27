@@ -174,6 +174,64 @@
     return /-(low|medium|high|xhigh|minimal|max)$/.test(name) && !name.endsWith('-tiered')
   }
 
+  // The combo editor has three member states and the summary tells them apart:
+  // a pin forces the level, an unpinned member follows the request, and a
+  // tier-fixed id carries its tier in the model name.
+  const pinSummary = $derived.by(() => {
+    let pinned = 0
+    let inherit = 0
+    let fixed = 0
+    for (const model of models) {
+      const { base, level } = thinkingParts(model)
+      if (isTierFixedModel(base)) fixed++
+      else if (level) pinned++
+      else inherit++
+    }
+    return { pinned, inherit, fixed }
+  })
+
+  const levelOrder = ['minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+
+  // Mirrors levelFor in the Go writer: the closest level at or below the one
+  // asked for, else the lowest level the model serves.
+  function clampedPreview(level: string, levels: string[]): string {
+    if (levels.includes(level)) return level
+    if (level === 'minimal' && levels.includes('low')) return 'low'
+    const want = levelOrder.indexOf(level)
+    if (want < 0) return 'medium'
+    let best = ''
+    let bestRank = -1
+    let lowest = ''
+    let lowestRank = Number.MAX_SAFE_INTEGER
+    for (const candidate of levels) {
+      if (candidate === 'none') continue
+      const rank = levelOrder.indexOf(candidate)
+      if (rank < 0) continue
+      if (rank <= want && rank > bestRank) {
+        best = candidate
+        bestRank = rank
+      }
+      if (rank < lowestRank) {
+        lowest = candidate
+        lowestRank = rank
+      }
+    }
+    return best || lowest || level
+  }
+
+  // A pin the model cannot serve is not an error at runtime (the writer clamps
+  // it), so the editor has to say what will actually be sent.
+  function pinWarning(model: string): string {
+    const { base, level } = thinkingParts(model)
+    if (!level) return ''
+    if (isTierFixedModel(base)) return 'The tier is fixed by the model id; this pin is ignored.'
+    const levels = capsFor(model)?.thinkingLevels
+    if (!levels) return ''
+    if (levels.length === 0) return `This model publishes no effort levels; the (${level}) pin is dropped and its own default applies.`
+    if (levels.includes(level)) return ''
+    return `This model does not serve "${level}"; the request will carry "${clampedPreview(level, levels)}".`
+  }
+
   function thinkingParts(model: string): { base: string; level: string } {
     const match = /^(.*)\(([^()]+)\)$/.exec(model)
     if (!match) return { base: model, level: '' }
@@ -773,6 +831,15 @@
               {alive}/{total} Alive
             </span>
           {/if}
+          {#if models.length > 0}
+            <span
+              class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-brand-500/10 text-brand-600 dark:text-brand-400 shrink-0 whitespace-nowrap"
+              title="Pinned members keep their own level and ignore the request body. Inherited members follow the level the request carries, clamped to the levels they publish."
+            >
+              {pinSummary.pinned} pinned · {pinSummary.inherit} inherit
+              {#if pinSummary.fixed > 0}· {pinSummary.fixed} tier-fixed{/if}
+            </span>
+          {/if}
         </div>
       </div>
 
@@ -842,14 +909,14 @@
                   value={thinkingLevelOf(model)}
                   onchange={(e) => setThinkingLevel(idx, e.currentTarget.value)}
                   class="shrink-0 rounded border border-border bg-surface px-1 py-0.5 text-[10px] text-text-main focus:outline-none focus:border-brand-500 cursor-pointer"
-                  title="Thinking levels reported for this model (overrides the composer level)"
+                  title="Inherit follows the level the request carries (clamped per model). A pin overrides the request body."
                 >
-                  <option value="">Think: default</option>
+                  <option value="">Inherit (follow request)</option>
                   {#each levels as level (level)}
-                    <option value={level}>Think: {level}</option>
+                    <option value={level}>Pin: {level}</option>
                   {/each}
                   {#if thinkingLevelOf(model) && !levels.includes(thinkingLevelOf(model))}
-                    <option value={thinkingLevelOf(model)}>Think: {thinkingLevelOf(model)}</option>
+                    <option value={thinkingLevelOf(model)}>Pin: {thinkingLevelOf(model)}</option>
                   {/if}
                 </select>
               {:else if isTierFixedModel(thinkingParts(model).base)}
@@ -867,6 +934,12 @@
                   class="shrink-0 rounded border border-border/60 px-1 py-0.5 text-[10px] text-text-muted/70"
                   title="This model has no thinking mode"
                 >no think</span>
+              {/if}
+              {#if pinWarning(model)}
+                <span
+                  class="shrink-0 cursor-help text-[11px] leading-none text-amber-600 dark:text-amber-400"
+                  title={pinWarning(model)}
+                >!</span>
               {/if}
               {#if caps.vision}
                 <Eye class="w-3 h-3 text-blue-500 shrink-0" title="Vision — Supports image input" />

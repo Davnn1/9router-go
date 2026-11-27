@@ -8,6 +8,15 @@ import (
 // applyFormat ports applyFormat: one dialect out. none on a model that
 // cannot disable clamps to level minimal before the writer runs.
 func applyFormat(fmt string, body map[string]any, cfg *Intent, caps providers.Capabilities, supported []string, display string, provider string) {
+	// supported is an empty (non-nil) set when the model reasons but publishes
+	// no discrete levels. Writing a guessed effort there sends a level the
+	// endpoint never advertised — Kimi's highspeed twins answer 400 to
+	// reasoning_effort. The caller has already stripped the client's fields, so
+	// leaving the body alone lets the upstream default stand. nil means the
+	// model cannot reason and is handled before this call.
+	if supported != nil && len(supported) == 0 {
+		return
+	}
 	none := cfg.Mode == ModeNone
 	cd := caps.CanDisableThinking()
 	eff := cfg
