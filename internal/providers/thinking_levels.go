@@ -130,6 +130,8 @@ var patternThinking = []thinkingPattern{
 	// unreachable here (the deepseek wire branch clamps max to high when the
 	// declared set lacks it).
 	{Provider: "opencode", Pattern: "*mimo*v2.6*", Levels: []string{"none", "minimal", "low", "medium", "high", "xhigh", "max"}},
+	{Provider: "opencode-go", Pattern: "*mimo*v2.6*", Levels: []string{"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}},
+	{Provider: "ocg", Pattern: "*mimo*v2.6*", Levels: []string{"none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"}},
 	{Pattern: "*mimo*v2.6*", Levels: []string{"none", "low", "medium", "high", "xhigh"}},
 	// mimo-v2.5-pro on opencode-go rejects reasoning_effort "max" (probed live);
 	// v2.5 accepts it.

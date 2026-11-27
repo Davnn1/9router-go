@@ -667,10 +667,21 @@ func init() {
 	}
 
 	providerCapabilities["opencode-go"] = map[string]Capabilities{
+		// The OpenCode Go MiMo lane takes the documented eight ef[...]
+		// including none/minimal/ultra; Xiaomi's own API cannot disable it.
+		"mimo-v2.6-flash":          {Vision: true, AudioInput: true, VideoInput: true, Reasoning: true, Tools: true, ThinkingFormat: "deepseek", ThinkingCanDisable: new(true)},
+		"mimo-v2.6-pro":            {Vision: true, AudioInput: true, VideoInput: true, Reasoning: true, Tools: true, ThinkingFormat: "deepseek", ThinkingCanDisable: new(true)},
+		"mimo-v2.6-pro-ultraspeed": {Vision: true, AudioInput: true, VideoInput: true, Reasoning: true, Tools: true, ThinkingFormat: "deepseek", ThinkingCanDisable: new(true)},
 		"glm-5.3-flash": {
 			Vision: true, VideoInput: true, PDF: true, Reasoning: true, Tools: true,
 			ThinkingFormat: "openai", ThinkingCanDisable: new(false),
 		},
+	}
+
+	providerCapabilities["ocg"] = map[string]Capabilities{
+		"mimo-v2.6-flash":          {Vision: true, AudioInput: true, VideoInput: true, Reasoning: true, Tools: true, ThinkingFormat: "deepseek", ThinkingCanDisable: new(true)},
+		"mimo-v2.6-pro":            {Vision: true, AudioInput: true, VideoInput: true, Reasoning: true, Tools: true, ThinkingFormat: "deepseek", ThinkingCanDisable: new(true)},
+		"mimo-v2.6-pro-ultraspeed": {Vision: true, AudioInput: true, VideoInput: true, Reasoning: true, Tools: true, ThinkingFormat: "deepseek", ThinkingCanDisable: new(true)},
 	}
 
 	providerCapabilities["nous"] = map[string]Capabilities{

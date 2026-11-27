@@ -71,6 +71,9 @@ func (h *DashboardHandler) HandleSyncProviderModels(w http.ResponseWriter, r *ht
 			lastErr = clearErr
 			continue
 		}
+		if conn.Provider == "antigravity" || conn.Provider == "ag" {
+			entries = append(entries, antigravityVirtualFamilies(entries)...)
+		}
 		discovered, addErr := h.addDiscoveredModels(conn.Provider, entries)
 		if addErr != nil {
 			failed++
@@ -158,6 +161,63 @@ func (h *DashboardHandler) fetchLiveModelIDs(r *http.Request, conn *models.Provi
 		})
 	}
 	return live, entries, nil, true
+}
+
+// antigravityVirtualFamilies derives the bare family id from a live catalogue
+// that only publishes tier ids. Google serves Neon/Hydrogen as
+// gemini-4-neon-low/medium/high/...; the translator can route a bare family
+// plus a level to those ids, but the picker needs the family row. New families
+// are discovered on the same Sync Models click instead of being hand-added.
+func antigravityVirtualFamilies(entries []customModelBatchEntry) []customModelBatchEntry {
+	seen := make(map[string]bool, len(entries))
+	tiers := make(map[string]int)
+	for _, entry := range entries {
+		if entry.ID != "" {
+			seen[entry.ID] = true
+		}
+	}
+	for _, entry := range entries {
+		id := strings.ToLower(entry.ID)
+		base := id
+		for _, suffix := range []string{"-low", "-medium", "-high", "-xhigh", "-minimal", "-sonar", "-tiered-high", "-tiered-xhigh"} {
+			if strings.HasSuffix(base, suffix) {
+				base = strings.TrimSuffix(base, suffix)
+				break
+			}
+		}
+		if base == id || !strings.HasPrefix(base, "gemini-") {
+			continue
+		}
+		if _, ok := seen[base]; ok {
+			continue
+		}
+		tiers[base]++
+	}
+	out := make([]customModelBatchEntry, 0, len(tiers))
+	for base, count := range tiers {
+		if count < 2 {
+			continue
+		}
+		name := strings.ReplaceAll(base, "-", " ")
+		if parts := strings.Fields(name); len(parts) > 0 {
+			for i, part := range parts {
+				if part != "" {
+					parts[i] = strings.ToUpper(part[:1]) + part[1:]
+				}
+			}
+			name = strings.Join(parts, " ")
+		}
+		out = append(out, customModelBatchEntry{
+			ID:            base,
+			Name:          name,
+			Type:          "llm",
+			Vision:        true,
+			Reasoning:     true,
+			ContextWindow: 1048576,
+			MaxOutput:     65536,
+		})
+	}
+	return out
 }
 
 // addDiscoveredModels stores catalogue entries the static registry does not
