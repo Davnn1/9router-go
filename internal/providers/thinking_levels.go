@@ -78,6 +78,25 @@ var patternThinking = []thinkingPattern{
 	// Kimi K3.1 Pro always reasons and accepts only low/high/max; medium and
 	// the OpenAI aliases are not part of its documented effort vocabulary.
 	{Pattern: "*k3.1-pro*", Levels: []string{"low", "high", "max"}},
+	// Kimi's plan catalogue (k3 / k3.1-pro / k3-256k) publishes exactly
+	// low/high/max with thinking always on; our kimi wire default (levelMax)
+	// would offer a "medium" the model does not serve. Provider-qualified so
+	// the pattern cannot claim another lane's k3-shaped id.
+	{Provider: "kimi", Pattern: "*k3*", Levels: []string{"low", "high", "max"}},
+	// The highspeed twins publish "Thinking: ON" and no effort options at all
+	// (models.dev reasoning_options: []), so the picker must not offer levels
+	// the endpoint does not accept. Empty set = "Think: auto" in the UI. This
+	// row MUST stay above the generic *kimi-for-coding* glob: first match wins.
+	{Pattern: "*kimi-for-coding-highspeed*", Levels: []string{}},
+	// kimi-for-coding (K2.8 Preview) documents low/high/max with thinking
+	// always on, default max.
+	{Pattern: "*kimi-for-coding*", Levels: []string{"low", "high", "max"}},
+	// Provider-qualified: "kimi-k2.7-code" shaped ids are also published by
+	// aggregator lanes (cmc, commandcode, tokenrouter, ocz) whose wire accepts
+	// the full OpenAI effort enum, so an unqualified glob would strip levels
+	// those endpoints serve.
+	{Provider: "kimi", Pattern: "*kimi*k2.7*code*highspeed*", Levels: []string{}},
+	{Provider: "kimi", Pattern: "*kimi*k2.7*code*", Levels: []string{}},
 	// DeepSeek's documented reasoning_effort vocabulary is low/high/max;
 	// medium/xhigh are folded upstream rather than exposed. The OpenCode Go
 	// lane shares that wire even though its registry format is openai.

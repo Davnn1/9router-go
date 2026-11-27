@@ -185,6 +185,20 @@ var pendingUpstreamDivergences = map[string]map[string][]string{
 		"google/gemini-3.7-flash": {"low", "medium", "high"},
 		"google/gemini-3.6-flash": {"low", "medium", "high"},
 	},
+	// Kimi's plan catalogue documents low/high/max for k3, k3.1-pro and
+	// kimi-for-coding (thinking always on, default high for k3 and max for
+	// kimi-for-coding), and no effort options at all for the highspeed twins
+	// ("Thinking: ON"). v0.5.109 still resolves every kimi id through the wire
+	// default [low, medium, high, max], so the picker offered a "medium" the
+	// endpoint does not serve. Go-intentional, not pending.
+	"kimi": {
+		"kimi-k3":                   {"low", "high", "max"},
+		"k3":                        {"low", "high", "max"},
+		"kimi-for-coding":           {"low", "high", "max"},
+		"kimi-for-coding-highspeed": {},
+		"kimi-k2.7-code":            {},
+		"kimi-k2.7-code-highspeed":  {},
+	},
 }
 
 // divergentFromPending reports whether a mismatch is one of the documented
