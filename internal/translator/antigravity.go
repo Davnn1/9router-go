@@ -374,6 +374,8 @@ func StripCompetitivePrompts(req *GeminiRequest) *GeminiRequest {
 var AntigravityModelSynonyms = map[string]string{
 	// Gemini 4 Argon serves one backend id per tier; the bare catalog id is medium tier.
 	"gemini-4-argon":        "gemini-4-argon-medium",
+	"gemini-4-neon":         "gemini-4-neon-medium",
+	"gemini-4-hydrogen":     "gemini-4-hydrogen-medium",
 	"gemini-4-argon-high":   "gemini-4-argon-high",
 	"gemini-4-argon-medium": "gemini-4-argon-medium",
 	"gemini-4-argon-low":    "gemini-4-argon-low",
@@ -448,6 +450,8 @@ func NormalizeAntigravityModel(model string) string {
 var antigravityUpstreamModelIDs = map[string]string{
 	// Gemini 4 Argon serves one backend id per tier; the bare catalog id is medium tier.
 	"gemini-4-argon":        "gemini-4-argon-medium",
+	"gemini-4-neon":         "gemini-4-neon-medium",
+	"gemini-4-hydrogen":     "gemini-4-hydrogen-medium",
 	"gemini-4-argon-high":   "gemini-4-argon-high",
 	"gemini-4-argon-medium": "gemini-4-argon-medium",
 	"gemini-4-argon-low":    "gemini-4-argon-low",
@@ -608,11 +612,27 @@ func antigravityToFloat(v any) (float64, bool) {
 func AntigravityTieredModel(model string, clientBody []byte) string {
 	base := stripParenthesisedSuffix(strings.ToLower(strings.TrimSpace(model)))
 	if tier := AntigravityEffortTier(model, clientBody); tier != "" {
+		if antigravityFamilyServesTier(base, tier) {
+			return base + "-" + tier
+		}
 		if resolved, ok := antigravityUpstreamModelIDs[base+"-"+tier]; ok {
 			return stripParenthesisedSuffix(resolved)
 		}
 	}
 	return AntigravityUpstreamModel(model)
+}
+
+// antigravityFamilyServesTier covers families Google publishes only as
+// per-tier ids (Neon/Hydrogen/Argon). A client can still name the bare family
+// and ask for a level; the translator resolves that to the tier id Google
+// actually serves instead of forwarding a 404.
+func antigravityFamilyServesTier(base, tier string) bool {
+	tiers, ok := map[string]map[string]bool{
+		"gemini-4-neon":     {"low": true, "medium": true, "high": true, "xhigh": true},
+		"gemini-4-hydrogen": {"low": true, "medium": true, "high": true, "xhigh": true},
+		"gemini-4-argon":    {"low": true, "medium": true, "high": true},
+	}[base]
+	return ok && tiers[tier]
 }
 
 // stripParenthesisedSuffix removes a trailing "(level)" from an id, if any.

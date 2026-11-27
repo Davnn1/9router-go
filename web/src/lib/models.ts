@@ -382,6 +382,16 @@ export const BUILTIN_MODELS_BY_PROVIDER: Record<string, ProviderModel[]> = {
       "upstreamModelId": "gemini-4-argon-medium(medium)"
     },
     {
+      "id": "gemini-4-neon",
+      "name": "Gemini 4 Neon",
+      "upstreamModelId": "gemini-4-neon-medium(medium)"
+    },
+    {
+      "id": "gemini-4-hydrogen",
+      "name": "Gemini 4 Hydrogen",
+      "upstreamModelId": "gemini-4-hydrogen-medium(medium)"
+    },
+    {
       "id": "gemini-3.8-flash-high",
       "name": "Gemini 3.8 Flash (High)",
       "upstreamModelId": "gemini-3.8-flash-high(high)"

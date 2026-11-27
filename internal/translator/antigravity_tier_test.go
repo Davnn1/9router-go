@@ -75,3 +75,19 @@ func TestAntigravityTieredLegacyAlias(t *testing.T) {
 		}
 	}
 }
+
+func TestAntigravityVirtualFamilyTiers(t *testing.T) {
+	cases := []struct{ model, body, want string }{
+		{"gemini-4-neon(high)", `{}`, "gemini-4-neon-high"},
+		{"gemini-4-neon", `{"reasoning_effort":"low"}`, "gemini-4-neon-low"},
+		{"gemini-4-neon", `{}`, "gemini-4-neon-medium"},
+		{"gemini-4-hydrogen(high)", `{}`, "gemini-4-hydrogen-high"},
+		{"gemini-4-hydrogen", `{"reasoning_effort":"high"}`, "gemini-4-hydrogen-high"},
+		{"gemini-4-argon(high)", `{}`, "gemini-4-argon-high"},
+	}
+	for _, tc := range cases {
+		if got := AntigravityTieredModel(tc.model, []byte(tc.body)); got != tc.want {
+			t.Errorf("AntigravityTieredModel(%q, %s) = %q, want %q", tc.model, tc.body, got, tc.want)
+		}
+	}
+}

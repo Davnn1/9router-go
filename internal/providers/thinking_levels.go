@@ -100,6 +100,8 @@ var patternThinking = []thinkingPattern{
 	// thinking cannot be disabled. Upstream carries the same override
 	// (thinkingLevels.js:44).
 	{Pattern: "*gemini*argon*", Levels: []string{"low", "medium", "high"}},
+	{Pattern: "*gemini-4-neon*", Levels: []string{"low", "medium", "high"}},
+	{Pattern: "*gemini-4-hydrogen*", Levels: []string{"low", "medium", "high"}},
 	{Pattern: "*gemini-4*", Levels: []string{"low", "medium", "high"}},
 	// Gemini 3.8 tiered ids carry the tier in the model id
 	// (gemini-3.8-flash-low/medium/high) and answer 400
